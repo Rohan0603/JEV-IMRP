@@ -1,0 +1,27 @@
+"""JEV-IMRP: research platform. Research/replay only; no order placement."""
+
+from jev_imrp.common.version import (
+    CONFIG_SCHEMA_VERSION,
+    COST_SCHEDULE_VERSION,
+    EXPERIMENT_CONTRACT_VERSION,
+    FEATURE_CONFIG_VERSION,
+    LABEL_VERSION,
+    PARSER_VERSION,
+    RAW_EVENT_SCHEMA_VERSION,
+    SIMULATION_VERSION,
+    UNIVERSE_VERSION,
+    __version__,
+)
+
+__all__ = [
+    "CONFIG_SCHEMA_VERSION",
+    "COST_SCHEDULE_VERSION",
+    "EXPERIMENT_CONTRACT_VERSION",
+    "FEATURE_CONFIG_VERSION",
+    "LABEL_VERSION",
+    "PARSER_VERSION",
+    "RAW_EVENT_SCHEMA_VERSION",
+    "SIMULATION_VERSION",
+    "UNIVERSE_VERSION",
+    "__version__",
+]

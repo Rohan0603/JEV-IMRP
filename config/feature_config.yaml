@@ -1,0 +1,103 @@
+# Feature definition/version registry (plan section 7.2). Definitions only; the
+# computation library lands in Sprint 2 (src/features/).
+feature_config_version: "v1"
+feature_set_version: "fs_v1"
+definition_reference: "JEV_IMRP_Complete_Implementation_Plan_v2.md section 7.2"
+
+# unit_suffix vocabulary (plan 6.2: explicit units in names)
+unit_suffixes:
+  _bps: basis points
+  _pct: percent
+  _qty: quantity/contracts
+  _price: currency price
+  _utc: timezone-aware UTC timestamp
+
+features:
+  - name: spread_bps
+    unit: _bps
+    definition_ref: "section 7.2 spread_bps: 10000 * (ask1 - bid1) / midpoint"
+    availability_rule: "only from valid, fresh, positive L1 quotes at or before decision time"
+    priority: mandatory
+
+  - name: touch_size_imbalance
+    unit: ratio
+    definition_ref: "section 7.2: (bid_qty1 - ask_qty1) / (bid_qty1 + ask_qty1)"
+    availability_rule: "NULL and validity-flagged when the denominator is zero or sizes are invalid"
+    priority: optional_initial
+
+  - name: atr_pct
+    unit: _pct
+    definition_ref: "section 7.2: ATR over COMPLETED bars only, divided by price"
+    availability_rule: "completed bars only; lookback and indicator definition frozen here"
+    lookback_bars: null       # TBD - must be frozen before data inspection
+    priority: medium
+
+  - name: relative_volume
+    unit: ratio
+    definition_ref: "section 7.2: current information vs a point-in-time intraday/time-of-day reference"
+    availability_rule: "never uses final session volume"
+    reference_window: null    # TBD - must be frozen before data inspection
+    priority: medium
+
+  - name: dist_vwap_pct
+    unit: _pct
+    definition_ref: "section 7.2: VWAP from only the accumulated trades/volume available by decision time"
+    availability_rule: "session-reset rule must be frozen here"
+    vwap_reset: null          # TBD - must be frozen before data inspection
+    priority: medium
+
+  - name: dist_pdh_pdl_pct
+    unit: _pct
+    definition_ref: "section 7.2: distance to the prior completed session's high/low"
+    availability_rule: "prior completed session only; corporate-action handling must be verified"
+    priority: medium
+
+  - name: india_vix
+    unit: index
+    definition_ref: "section 7.2: latest published India VIX value available by the signal timestamp"
+    availability_rule: "point-in-time publication time; staleness limit must be frozen here"
+    max_staleness_seconds: null   # TBD - must be frozen before data inspection
+    priority: medium
+
+  - name: nifty_returns_trend
+    unit: _pct
+    definition_ref: "section 7.2: causal multi-horizon Nifty returns and volatility"
+    availability_rule: "point-in-time only; thresholds, if categorical, frozen on training data"
+    horizons_minutes: null    # TBD - must be frozen before data inspection
+    priority: medium
+
+  - name: time_of_day_minutes_since_open
+    unit: minutes
+    definition_ref: "section 7.2: minutes since session open, cyclical encoding or predeclared buckets"
+    availability_rule: "causal; derived from the exchange session calendar"
+    encoding: null            # TBD - cyclical or bucket definition must be frozen before data inspection
+    priority: medium
+
+  - name: event_flags
+    unit: boolean
+    definition_ref: "section 7.2: only with a recorded event source and publication/availability time"
+    availability_rule: "no retrospective event classifications"
+    priority: later
+
+  - name: sector_returns_breadth
+    unit: _pct
+    definition_ref: "section 7.2: point-in-time contemporaneous sector/breadth context"
+    availability_rule: "point-in-time as-of join with a maximum staleness limit"
+    priority: later
+
+  - name: realized_volatility
+    unit: _pct
+    definition_ref: "section 7.2: causal multi-window realized volatility estimates"
+    availability_rule: "causal multi-window estimates complementing ATR"
+    priority: later
+
+  - name: order_flow_velocity
+    unit: ratio
+    definition_ref: "section 7.2: requires verified update cadence; never inferred from sparse L1 updates"
+    availability_rule: "only if feed coverage and update cadence are verified in Sprint 1"
+    priority: later
+
+naming_rules:
+  - "Do NOT name an L1-derived field depth_imbalance or describe it as five-level depth (plan 7.3)."
+  - "Every feature value must be reproducible from data observable no later than its as_of timestamp (plan 7.1)."
+  - "One shared library serves both historical replay and shadow mode; never two versions."
