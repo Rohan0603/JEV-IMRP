@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-import pyarrow as pa
+import pyarrow as pa  # type: ignore[import-untyped]
 
 from jev_imrp.common.version import PARSER_VERSION, RAW_EVENT_SCHEMA_VERSION
 

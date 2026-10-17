@@ -30,8 +30,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import pyarrow as pa
-import pyarrow.parquet as pq
+import pyarrow as pa  # type: ignore[import-untyped]
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
 from jev_imrp.common.timeutils import ist_session_date
 from jev_imrp.common.version import PARSER_VERSION, RAW_EVENT_SCHEMA_VERSION

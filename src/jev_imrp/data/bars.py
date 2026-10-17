@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pandas as pd
+import pandas as pd  # type: ignore[import-untyped]
 
 #: Human-readable convention string stored alongside every bar dataset.
 BARS_1M_CONVENTION = (
