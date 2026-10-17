@@ -1,0 +1,178 @@
+{
+  "_comment": [
+    "HAND-CALCULATED statutory fee fixtures (plan 8.4 / gate 11.2).",
+    "Every value below was worked out by hand from the broker schedule effective",
+    "date and reconciled against the implementation to the last decimal place.",
+    "All amounts are INR strings so the test compares exact Decimal values.",
+    "",
+    "Rules used, per executed leg, on turnover T:",
+    "  brokerage        = min(0.03% * T, 5.00)",
+    "  stt              = 0.025% * T on the SELL side only (equity intraday)",
+    "  exchange (NSE)   = 0.00307% * T per side from 2026-03-01, 0.00297% before",
+    "  sebi             = 10 * T / 1e7",
+    "  stamp duty       = BUY only, min(0.003% * T, 300 * T / 1e7)",
+    "  gst              = 18% * (brokerage + sebi + exchange)",
+    "  ipft             = 0.01 * T / 1e7 only when enabled",
+    "",
+    "Note: 300 per crore is exactly 0.003%, so the stamp-duty lower-of form ties",
+    "at every notional; it is still asserted so a future rate change is caught."
+  ],
+  "cost_schedule": "config/cost_schedule.yaml",
+  "cases": [
+    {
+      "name": "small_long_entry_buy_post_2026_03_01",
+      "note": "BUY 100 x 100.00 = T 10000.00, 2026-10-05",
+      "on": "2026-10-05",
+      "side": "buy",
+      "turnover_inr": "10000.00",
+      "expected": {
+        "brokerage": "3.00",
+        "stt": "0",
+        "exchange_transaction_fee": "0.307",
+        "sebi_turnover_fee": "0.01",
+        "stamp_duty": "0.30",
+        "gst": "0.597060",
+        "ipft": "0",
+        "total": "4.214060"
+      }
+    },
+    {
+      "name": "small_short_entry_sell_stt_sell_side_only",
+      "note": "SELL 100 x 100.00 = T 10000.00; STT applies, stamp duty does not",
+      "on": "2026-10-05",
+      "side": "sell",
+      "turnover_inr": "10000.00",
+      "expected": {
+        "brokerage": "3.00",
+        "stt": "2.50",
+        "exchange_transaction_fee": "0.307",
+        "sebi_turnover_fee": "0.01",
+        "stamp_duty": "0",
+        "gst": "0.597060",
+        "ipft": "0",
+        "total": "6.414060"
+      }
+    },
+    {
+      "name": "brokerage_cap_binding_above_crossing_point",
+      "note": "T 20000.00: 0.03% would be 6.00, so the Rs 5 cap binds; effective rate 0.025%",
+      "on": "2026-10-05",
+      "side": "buy",
+      "turnover_inr": "20000.00",
+      "expected": {
+        "brokerage": "5.00",
+        "stt": "0",
+        "exchange_transaction_fee": "0.614",
+        "sebi_turnover_fee": "0.02",
+        "stamp_duty": "0.60",
+        "gst": "1.014120",
+        "ipft": "0",
+        "total": "7.248120"
+      }
+    },
+    {
+      "name": "pre_2026_03_01_old_exchange_rate",
+      "note": "T 10000.00 on 2026-02-27: NSE transaction charge 0.00297%, all else current",
+      "on": "2026-02-27",
+      "side": "buy",
+      "turnover_inr": "10000.00",
+      "expected": {
+        "brokerage": "3.00",
+        "stt": "0",
+        "exchange_transaction_fee": "0.297",
+        "sebi_turnover_fee": "0.01",
+        "stamp_duty": "0.30",
+        "gst": "0.595260",
+        "ipft": "0",
+        "total": "4.202260"
+      }
+    },
+    {
+      "name": "partial_fill_40_shares",
+      "note": "Partial leg: BUY 40 x 100.00 = T 4000.00. Below the cap, so brokerage 1.20",
+      "on": "2026-10-05",
+      "side": "buy",
+      "turnover_inr": "4000.00",
+      "expected": {
+        "brokerage": "1.20",
+        "stt": "0",
+        "exchange_transaction_fee": "0.1228",
+        "sebi_turnover_fee": "0.004",
+        "stamp_duty": "0.12",
+        "gst": "0.238824",
+        "ipft": "0",
+        "total": "1.685624"
+      }
+    },
+    {
+      "name": "ipft_enabled_when_schedule_charges_it",
+      "note": "Same leg as case 1 with IPFT enabled; IPFT is NOT in the GST base (UNVERIFIED_CONTRACT_NOTE_CHECK)",
+      "on": "2026-10-05",
+      "side": "buy",
+      "turnover_inr": "10000.00",
+      "include_ipft": true,
+      "expected": {
+        "brokerage": "3.00",
+        "stt": "0",
+        "exchange_transaction_fee": "0.307",
+        "sebi_turnover_fee": "0.01",
+        "stamp_duty": "0.30",
+        "gst": "0.597060",
+        "ipft": "0.00001",
+        "total": "4.214070"
+      }
+    },
+    {
+      "name": "large_long_entry_leg",
+      "note": "BUY 10000 x 250.00 = T 2,500,000.00",
+      "on": "2026-10-05",
+      "side": "buy",
+      "turnover_inr": "2500000.00",
+      "expected": {
+        "brokerage": "5.00",
+        "stt": "0",
+        "exchange_transaction_fee": "76.75",
+        "sebi_turnover_fee": "2.50",
+        "stamp_duty": "75.00",
+        "gst": "15.165000",
+        "ipft": "0",
+        "total": "174.415000"
+      }
+    },
+    {
+      "name": "large_long_exit_leg",
+      "note": "SELL 10000 x 260.00 = T 2,600,000.00; STT is the dominant charge",
+      "on": "2026-10-05",
+      "side": "sell",
+      "turnover_inr": "2600000.00",
+      "expected": {
+        "brokerage": "5.00",
+        "stt": "650.00",
+        "exchange_transaction_fee": "79.82",
+        "sebi_turnover_fee": "2.60",
+        "stamp_duty": "0",
+        "gst": "15.735600",
+        "ipft": "0",
+        "total": "753.155600"
+      }
+    }
+  ],
+  "round_trips": [
+    {
+      "name": "large_long_round_trip",
+      "note": "10000 shares, BUY @ 250.00 (2026-10-05), SELL @ 260.00; both legs from the cases above",
+      "position_side": "long",
+      "quantity": 10000,
+      "on": "2026-10-05",
+      "entry_price": "250.00",
+      "exit_price": "260.00",
+      "expected": {
+        "fees_total_inr": "927.570600",
+        "gross_pnl_inr": "100000.00",
+        "net_pnl_inr": "99072.429400",
+        "defined_entry_notional_inr": "2500000.00",
+        "net_bps": "396.2897176"
+      }
+    }
+  ]
+}
