@@ -1,0 +1,59 @@
+{
+  "fixture": "session_normal",
+  "data_origin": "synthetic",
+  "warning": "SYNTHETIC DATA. Hand-written to exercise the verified Shoonya feed contract (tk snapshot + sparse tf updates, L1 touchline only). This is NOT a capture of any real market session and must never be presented as market data.",
+  "contract_source": "Shoonya Subscribe Market Feed documentation, verified 2026-10-17",
+  "instruments": [
+    {
+      "symbol": "SYNTHETIC-A",
+      "exchange": "NSE",
+      "token": "9900001",
+      "instrument_type": "EQ",
+      "tick_size_inr": 0.05,
+      "note": "Equity-like: has touchline, no open interest field in this fixture."
+    },
+    {
+      "symbol": "SYNTHETIC-IDX",
+      "exchange": "NSE",
+      "token": "9900002",
+      "instrument_type": "IDX",
+      "tick_size_inr": 0.05,
+      "note": "Index-like: no bp1/sp1 touchline and no oi. Those fields must stay absent, never zero."
+    }
+  ],
+  "connect_ack": { "t": "ak", "s": "Ok" },
+  "connect_ack_alternative": { "t": "ck", "s": "OK" },
+  "messages": [
+    { "t": "ak", "s": "Ok" },
+    { "t": "tk", "e": "NSE", "tk": "9900001", "ti": "SYNTHETIC-A", "ft": "1790200000", "lp": "1000.00", "ls": "10", "v": "1000", "o": "995.00", "h": "1005.00", "l": "994.00", "c": "999.50", "ap": "999.80", "pp": "998.00", "pc": "997.50", "bq1": "50", "bp1": "999.90", "sq1": "40", "sp1": "1000.10" },
+    { "t": "tk", "e": "NSE", "tk": "9900002", "ti": "SYNTHETIC-IDX", "ft": "1790200001", "lp": "5000.00", "ls": "0", "v": "0", "o": "4990.00", "h": "5010.00", "l": "4988.00", "c": "5005.00" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200010", "bp1": "999.85" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200020", "bq1": "75" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200030", "sp1": "1000.20", "sq1": "35" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200040", "bq1": "60", "sp1": "1000.25", "bp1": "1000.30" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200050" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200060", "lp": "1003.00", "ls": "25", "v": "1500" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200035", "lp": "1002.00" },
+    { "t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200060", "lp": "1003.00", "ls": "25", "v": "1500" },
+    { "t": "tf", "e": "NSE", "tk": "9900002", "ft": "1790200070", "lp": "5002.00" },
+    { "t": "zz", "e": "NSE", "tk": "9900001", "note": "unknown message type, must be flagged not dropped" }
+  ],
+  "expected": {
+    "after_snapshot_A": {
+      "last_price": 1000.0,
+      "bid_price_1": 999.9,
+      "bid_qty_1": 50.0,
+      "ask_price_1": 1000.1,
+      "ask_qty_1": 40.0,
+      "volume": 1000.0,
+      "open_interest": null
+    },
+    "sparse_bp1_only": { "bid_price_1": 999.85, "ask_price_1": 1000.1, "last_price": 1000.0 },
+    "sparse_bq1_only": { "bid_qty_1": 75.0, "bid_price_1": 999.85 },
+    "crossed_message_index": 6,
+    "no_ltp_message_index": 7,
+    "duplicate_message_index": 10,
+    "timestamp_regression_message_index": 9,
+    "unknown_type_message_index": 12
+  }
+}
