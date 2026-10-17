@@ -441,3 +441,24 @@ def test_read_raw_events_on_empty_root_is_typed_and_empty(tmp_path):
     table = read_raw_events(tmp_path / "missing")
     assert table.num_rows == 0
     assert "raw_payload_json" in table.column_names
+
+
+def test_backup_copy_restores_and_verifies(tmp_path):
+    """Plan 5.5/11.1: a copy of the raw tree must restore and verify cleanly."""
+    import shutil
+
+    source = tmp_path / "raw"
+    recorder = make_recorder(source, WriterSettings(max_rows_per_file=4))
+    feed_messages(recorder)
+    recorder.close()
+
+    backup = tmp_path / "backup"
+    shutil.copytree(source, backup)
+    assert verify_manifest(backup) == []
+    assert [e.path for e in read_manifest(backup)] == [e.path for e in read_manifest(source)]
+
+    restored = read_raw_events(backup)
+    assert restored.num_rows == read_raw_events(source).num_rows
+
+    quarantine_unfinalized(backup)  # recovery step on the restored copy
+    assert verify_manifest(backup) == []
