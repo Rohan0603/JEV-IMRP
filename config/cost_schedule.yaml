@@ -1,0 +1,118 @@
+# Cost schedule (plan section 8.4): every statutory component calculated PER LEG,
+# in rupees, before any normalisation to bps.
+#
+# VERIFICATION STATUS: every rate in this file is UNVERIFIED. Only two figures are
+# even stated in the plan (brokerage 0.03% / Rs 5 cap, and the NSE equity
+# transaction charge of 0.00307% effective 2026-03-01), and the plan itself says
+# they must be confirmed against the broker's then-current schedule and contract
+# note before any execution test. External verification is in flight with the
+# research worker; do not run an execution-relevant result until each rate here
+# carries verification: VERIFIED with a dated source.
+#
+# Rules that hold regardless of the numbers:
+#   - fees are computed per executed leg (entry and exit separately);
+#   - brokerage is NOT a constant bps rate: the Rs 5 cap makes the effective
+#     rate notional-dependent;
+#   - slippage/impact is modelled separately from statutory fees;
+#   - net_pnl = signed_gross_pnl - sum(all components) - modelled slippage/impact.
+cost_schedule_version: "v1"
+currency: "INR"
+basis: per_executed_leg
+unverified_notice: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+versions:
+  - effective_from: "2026-03-01"
+    effective_to: null          # open-ended; supersede with a dated entry when rates change
+    components:
+
+      brokerage:
+        applies_to: equity_intraday
+        type: percent_or_cap_lower_of
+        percent: 0.03
+        cap_per_order_inr: 5.00
+        cap_rule: "min(percent * turnover, cap_per_order_inr)"
+        per: executed_order
+        source: "plan section 8.4, citing the Shoonya pricing page reviewed 2026-10-17"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      stt:
+        applies_to: equity_intraday
+        type: percent_of_turnover
+        rate_pct: null          # TBD - must be filled from the current statutory schedule
+        sides: [sell]           # intraday equity STT applies on the sell side
+        per: executed_order
+        source: "plan section 8.4 (rate not stated in plan)"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      exchange_transaction_fee_nse:
+        applies_to: equity
+        type: percent_of_turnover
+        rate_pct: 0.00307
+        sides: [buy, sell]
+        effective_from_note: "effective 2026-03-01 per plan section 8.4"
+        per: executed_order
+        source: "plan section 8.4, citing the Shoonya pricing page reviewed 2026-10-17"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      sebi_turnover_fee:
+        applies_to: equity
+        type: percent_of_turnover
+        rate_pct: null          # TBD - must be filled from the current SEBI schedule
+        sides: [buy, sell]
+        per: executed_order
+        source: "plan section 8.4 (rate not stated in plan)"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      stamp_duty:
+        applies_to: equity
+        type: percent_of_turnover
+        rate_pct: null          # TBD - must be filled from the current statutory schedule
+        sides: [buy]
+        per: executed_order
+        source: "plan section 8.4 (rate not stated in plan)"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      gst:
+        applies_to: equity
+        type: percent_of_taxable_base
+        rate_pct: null          # TBD - must be filled from the current statutory schedule
+        taxable_base: [brokerage, sebi_turnover_fee, exchange_transaction_fee_nse]
+        taxable_base_note: >-
+          The broker schedule currently specifies brokerage, SEBI charges and
+          transaction charges as the taxable base (plan section 8.4). Confirm
+          against the then-current broker schedule.
+        per: executed_order
+        source: "plan section 8.4 (rate not stated in plan)"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      ipft_and_other_levies:
+        applies_to: equity
+        type: percent_of_turnover
+        rate_pct: null          # TBD - fill only if actually charged; do not assume
+        sides: [buy, sell]
+        included_by_default: false
+        note: "IPFT/other segment levies are included only when the broker actually charges them."
+        per: executed_order
+        source: "plan section 8.4"
+        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+
+      slippage_and_impact:
+        applies_to: equity
+        type: modelled_separately
+        included_in_statutory_fees: false
+        note: >-
+          Modelled in the execution simulator, never folded into the statutory
+          fee engine. Scenario-dependent (see execution_policy.yaml).
+        source: "plan sections 8.3 / 8.4"
+        verification: "N/A - model assumption, not a statutory rate"
+
+scenarios:
+  - name: base
+    description: "Broker charges plus conservative executable side prices and the chosen latency convention."
+  - name: stress_1
+    description: "Spread/slippage assumption increased by a predeclared amount or factor."
+    increase_pct: null          # TBD - must be fixed before data inspection
+  - name: stress_2
+    description: "Greater latency and slippage, with occasional unfilled/failed-exit cases."
+    latency_multiplier: null    # TBD - must be fixed before data inspection
+    unfilled_exit_rate: null    # TBD - must be fixed before data inspection

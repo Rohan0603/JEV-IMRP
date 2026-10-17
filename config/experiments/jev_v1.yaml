@@ -1,0 +1,66 @@
+# JEV challenger experiment skeleton (plan sections 9.3 / 9.4). Nothing here has
+# been run; no API call has been made and no response has been observed.
+experiment_id: jev_v1
+experiment_type: confirmatory_challenger
+experiment_config_version: "v1"
+mode: research_only
+
+api:
+  endpoint: https://api.typesafe.ai/v1/systemone
+  method: POST
+  contract_status: NOT_VERIFIED
+  contract_note: >-
+    Endpoint shape is taken from the plan (section 9.3), which states the
+    documented request carries `state`, `model` and named `questions`, and the
+    response carries `model`, `answers` and `usage`. A contract test against the
+    official documentation and a real credentialed call is a Sprint 7 gate
+    before any replay. The legacy /v1/decisions + judgments + decision shape must
+    NOT be used.
+  credentials_source: environment_variable_only   # never in config, code, or logs
+
+request_policy:
+  model_id: null              # TBD - exact model must be pinned before any confirmatory run
+  moving_alias_allowed_in_confirmatory_replay: false
+  moving_alias_note: "`jev-latest` may only be tested in a separate operational-drift study."
+  prompt_version: null        # TBD - frozen before the holdout
+  question_id: null
+  question_type: accept_reject
+  state_payload_canonical_form: null   # TBD - canonical state/payload plus its input hash
+  state_input_hash_algorithm: sha256
+
+reliability:
+  bounded_concurrency: true
+  max_concurrent_requests: null    # TBD - must be fixed before data inspection
+  rate_limit_rps: null            # TBD - must be fixed before data inspection
+  timeout_seconds: null           # TBD - must be fixed before data inspection
+  retry_backoff: "exponential on transient 5xx/overload only"
+  max_retries: null               # TBD - must be fixed before data inspection
+  persist_every_attempt: true     # successes AND failures, durably
+  one_task_per_historical_row: false
+  batch_by_state_when_supported: true
+  batch_note: "do not assume an array of states is a batch of independent cases unless the API contract says so"
+
+failure_policy:
+  coverage_and_failure_rate_reported: true
+  silent_drop_of_failures: forbidden
+  candidate_policy: reject      # TBD - reject / skip / fallback must be pre-declared and applied to all comparisons
+
+scoring:
+  answer_probability_is_not_calibrated_profit_probability: true
+  use: ranking_and_decision_score
+  calibration_required_before_probability_claims: true
+  matched_coverage_threshold_selection: validation_only
+
+comparison:
+  comparator: lightgbm_policy_frozen_by_validation_process
+  fairness_constraints: config/experiments/baseline_v1.yaml#fairness_constraints
+
+contamination:
+  risk: "historical replay may predate the model release; memorisation cannot be excluded"
+  mitigation: prefer prospective data captured after the model release
+  limitation_note: "anonymised-symbol/date sensitivity may be reported, but does not prove contamination absent"
+  primary_evidence: prospective_post_release_data
+
+artifacts:
+  trial_ledger: experiments/trial_ledger.csv
+  runs_dir: experiments/runs

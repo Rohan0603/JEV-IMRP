@@ -1,0 +1,27 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# captured and derived data (plan 13)
+data/
+db/
+reports/
+
+# experiment outputs: runs/ is generated, the ledger and configs are tracked
+experiments/runs/*
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
