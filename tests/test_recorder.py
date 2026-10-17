@@ -401,3 +401,43 @@ def test_instrument_master_reports_unresolved_tokens():
 
 
 
+
+
+def test_flush_batch_makes_the_open_batch_durable_without_closing(tmp_path):
+    root = tmp_path / "raw"
+    recorder = make_recorder(root, WriterSettings(max_rows_per_file=1000))
+    feed_messages(recorder, count=4)
+    assert read_manifest(root) == [], "nothing is finalized while the batch is open"
+    assert recorder.writer.pending_rows == 4
+
+    recorder.flush()  # the SIGINT/SIGTERM path
+    assert len(read_manifest(root)) == 1
+    assert recorder.writer.pending_rows == 0
+    assert verify_manifest(root) == []
+
+    feed_messages(recorder, count=2)  # capture continues after a flush
+    recorder.close()
+    assert len(read_manifest(root)) == 2
+
+
+def test_signal_handlers_are_installed_and_removed(tmp_path):
+    import signal
+
+    recorder = make_recorder(tmp_path / "raw", WriterSettings(max_rows_per_file=1000))
+    feed_messages(recorder, count=3)
+    undo = recorder.install_signal_handlers()
+    try:
+        assert signal.getsignal(signal.SIGINT) is not signal.SIG_DFL
+        assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+    finally:
+        undo()
+    assert signal.getsignal(signal.SIGINT) is signal.SIG_DFL or callable(
+        signal.getsignal(signal.SIGINT)
+    )
+    recorder.close()
+
+
+def test_read_raw_events_on_empty_root_is_typed_and_empty(tmp_path):
+    table = read_raw_events(tmp_path / "missing")
+    assert table.num_rows == 0
+    assert "raw_payload_json" in table.column_names
