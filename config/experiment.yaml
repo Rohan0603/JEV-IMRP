@@ -1,0 +1,48 @@
+# Global experiment contract (plan section 3.1 freeze list). Single source of the
+# frozen pointers; PREREGISTRATION.md states them in prose and links here.
+experiment_config_version: "v1"
+mode: research_only
+preregistration_file: PREREGISTRATION.md
+plan_document: JEV_IMRP_Complete_Implementation_Plan_v2.md
+
+frozen:
+  primary_question: >-
+    Given the same candidate trades and point-in-time information, does a frozen
+    JEV decision policy improve net portfolio outcomes over pre-registered simple
+    rules and a supervised model, under realistic Indian cash-equity costs and
+    execution assumptions?
+  primary_horizon_minutes: 30
+  universe_config: config/universe.yaml
+  cost_schedule_config: config/cost_schedule.yaml
+  execution_policy_config: config/execution_policy.yaml
+  feature_config: config/feature_config.yaml
+  candidate_signal_generator_version: null   # TBD - must be fixed before data inspection
+  primary_comparator: lightgbm_policy_frozen_by_validation_process
+  comparator_fallback_rule: >-
+    Declared in advance: if LightGBM cannot be trained on the primary task, the
+    comparator is the best-performing non-JEV baseline from the fixed ladder
+    (section 9.1), chosen on the validation window only, never on holdout data.
+  primary_metric: paired_daily_portfolio_net_pnl_difference
+  cost_scenarios: [base, stress_1, stress_2]
+
+  delta_min: null            # TBD - must be fixed before data inspection
+  alpha: null                 # TBD - must be fixed before data inspection
+  power_target: null          # TBD - must be fixed before data inspection
+  test_sidedness: null        # TBD - must be fixed before data inspection (one- vs two-sided)
+
+holdout:
+  locked: true
+  boundary_dates: null        # TBD - set once the prospective session count is known
+  embargo_sessions: null      # TBD - must be justified by horizon/dependency structure
+  purge_rule: "remove training rows whose label interval overlaps or reaches into the test interval"
+  opening_conditions:
+    - all data, label and cost gates in plan sections 11.1 and 11.2 pass
+    - comparator, metric, delta_min, sidedness and cost scenarios are frozen
+    - trial ledger contains every attempted trial
+  open_rule: >-
+    One frozen evaluation run per preregistered confirmatory experiment. If the
+    holdout influences any change, it is development data and a new holdout or
+    prospective period is required for confirmation (plan 10.2).
+
+trial_ledger: experiments/trial_ledger.csv
+max_trials: null              # TBD - must be fixed before data inspection

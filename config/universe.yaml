@@ -1,0 +1,120 @@
+# Universe policy (plan section 2.3). Research-only.
+#
+# instrument_token is deliberately null everywhere: tokens are broker-specific
+# identifiers that must be read from the live Shoonya instrument master, never
+# invented. Sprint 1 fills them and records the instrument-master version used.
+universe_version: "v1"
+frozen_at_utc: "2026-10-17"
+exchange: "NSE"
+segment: "cash_equity"
+instrument_type: "EQ"
+lot_size_applicable: false          # cash equities trade in units, not lots
+currency: "INR"
+tick_size_inr: 0.05                  # NSE cash equity tick size; verify at go-live
+
+eligibility_rule:
+  mode: fixed_frozen
+  description: >-
+    Membership is frozen at the start of the prospective experiment. The first
+    experiment therefore estimates performance on THIS fixed universe only; it
+    does not estimate performance on the historical Nifty 50 or on the NSE as a
+    whole. Retrospective reconstitution from today's constituents or today's
+    liquidity ranks is forbidden.
+  reconstitution: none_in_first_experiment
+  exclusions:
+    - symbol not tradeable in cash segment on every evaluated session
+    - symbol suspended or in a trading halt for the whole session
+    - instrument_token missing from the instrument master
+  effective_dates:
+    start: "2026-10-17"
+    end: null                        # open-ended; set when membership is superseded
+  source: "Sprint 0 selection by team; selection criteria recorded in PREREGISTRATION.md"
+
+instruments:
+  - symbol: RELIANCE
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: TCS
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: HDFCBANK
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: ICICIBANK
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: INFY
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: SBIN
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: BHARTIARTL
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: ITC
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: LT
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: AXISBANK
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: KOTAKBANK
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: HINDUNILVR
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: MARUTI
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: SUNPHARMA
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: TATAMOTORS
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: BAJFINANCE
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: ADANIENT
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: ASIANPAINT
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: ONGC
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+  - symbol: NTPC
+    exchange: NSE
+    instrument_token: null           # TODO: fill from Shoonya instrument master in Sprint 1
+    tick_size_inr: 0.05
+
+selection_note: >-
+  The 20 names above were chosen by the team as a large-cap, liquid, cash-equity
+  working set. Their liquidity at the evaluation date is not independently
+  verified here and no market data has been fabricated to support this list.
+  Confirm tradability and session coverage in Sprint 1; a symbol that fails
+  eligibility is excluded by rule, not by editing this file after seeing results.

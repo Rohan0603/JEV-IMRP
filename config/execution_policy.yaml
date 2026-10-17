@@ -1,0 +1,64 @@
+# Trading policy (plan sections 8.2 / 8.3). Frozen before any performance result
+# is inspected. TBD values below must be fixed by a dated amendment to
+# PREREGISTRATION.md BEFORE data inspection; they must never be filled in after
+# seeing strategy results.
+policy_version: "v1"
+mode: research_only          # no order placement anywhere in this repository
+
+sizing:
+  quantity_per_trade: 1
+  notional_mode: fixed_notional_at_entry_reference_price
+  fixed_notional_inr: null    # TBD - must be fixed before data inspection
+  capital_cap_inr: null       # TBD - must be fixed before data inspection
+  note: >-
+    The first filter study uses a fixed-notional, one-position-per-symbol policy
+    (plan 8.2). Every comparator and model uses identical sizing.
+
+overlap_and_concurrency:
+  one_position_per_symbol: true
+  allow_overlapping_signals_same_symbol: false
+  duplicate_signal_policy: reject_duplicate_while_position_open
+  max_concurrent_positions: 1
+  total_exposure_cap_inr: null   # TBD - must be fixed before data inspection
+  note: >-
+    Signals within one symbol/session are evaluated once; a second signal while a
+    position is open is recorded as a rejected candidate with reason
+    "position_open", not silently dropped.
+
+entry:
+  order_type_convention: marketable_l1_approximation
+  entry_latency_ms: null      # TBD - must be fixed before data inspection (decision -> order arrival)
+  max_quote_age_ms: null      # TBD - must be fixed before data inspection
+  reference_price:
+    long: ask1_at_modeled_arrival
+    short: bid1_at_modeled_arrival
+  quote_requirement: valid, positive, non-stale L1 touchline
+  on_unusable_quote: unfillable   # never substitute a mid-price or a zero fill
+
+exit:
+  rule: fixed_horizon
+  primary_horizon_minutes: 30
+  secondary_horizon_minutes: [5, 15, 60]
+  eod_exit: intraday_flat_by_end_of_session
+  square_off:
+    intraday_square_off_applies: false   # set by the candidate strategy, fixed before data inspection
+    square_off_time_ist: null             # TBD - must be fixed before data inspection
+  reference_price:
+    long: bid1_at_modeled_exit
+    short: ask1_at_modeled_exit
+
+session:
+  timezone: Asia/Kolkata
+  valid_sessions_ist: "09:15-15:30"
+  valid_days: [MON, TUE, WED, THU, FRI]   # exchange holidays excluded via a dated calendar
+  holidays_calendar: null   # TBD - sourced from the exchange calendar, never guessed
+  decisions_outside_session: rejected
+
+failure_policy:
+  failed_fills: skipped_trades_and_reported   # NOT execution losses; counted and disclosed
+  unfillable_candidates: recorded_with_reason_and_excluded_from_net_expectancy
+  duplicate_policy_applies_to: [candidate, order]
+  report_coverage_and_failure_rate: true
+  note: >-
+    Every policy above is applied identically to every model in a comparison
+    (plan 9.2). Failed JEV calls are never silently dropped.

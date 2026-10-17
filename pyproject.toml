@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-imrp"
+version = "0.1.0"
+description = "JEV-IMRP research platform (research/replay only; no live order placement)"
+requires-python = ">=3.12,<3.15"
+
+# Pins resolved locally on 2026-10-17 for CPython 3.14. Re-resolve deliberately
+# in a deliberate, reviewed update commit; never install from a floating range.
+dependencies = [
+    "pyarrow==26.0.0",        # plan 4.2: append-only Parquet raw/normalized storage
+    "duckdb==1.5.6",          # plan 4.2: analytical joins, feature/label tables
+    "pandas==3.0.6",          # plan 4.2: single primary dataframe engine (see rationale below)
+    "scikit-learn==1.9.1",    # plan 4.2: preprocessing, linear/logistic baselines, metrics
+    "lightgbm==4.7.0",        # plan 4.2: nonlinear tabular challenger (primary comparator)
+    "httpx==0.28.1",          # plan 4.2: TypeSafe API calls (unused until Sprint 7)
+    "pyyaml==6.0.3",          # configuration files
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "hypothesis==6.170.1",
+    "ruff==0.17.1",
+    "mypy==2.4.0",
+    "types-PyYAML==6.0.12.20250915",
+]
+
+# Dataframe engine rationale (plan 4.2 requires choosing one primary engine):
+# pandas, not Polars. scikit-learn and LightGBM consume numpy/pandas objects
+# directly, so pandas keeps the model path free of conversion layers; DuckDB
+# reads/writes Arrow tables and interoperates with pandas without an extra
+# dependency; its feature set (groupby/merge/asof joins) covers point-in-time
+# work in later sprints. Revisit only if a measured pandas profile is limiting.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["jev_imrp"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
