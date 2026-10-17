@@ -7,6 +7,7 @@ import logging
 import pytest
 
 from jev_imrp.common.config import (
+    CONFIG_DIR,
     is_unresolved,
     load_cost_schedule,
     load_execution_policy,
@@ -98,14 +99,52 @@ def test_is_unresolved_flags_tbd_and_unverified() -> None:
     assert not is_unresolved({"rate_pct": 0.05})
 
 
-def test_shipped_cost_rates_are_marked_unverified() -> None:
+def test_every_cost_rate_carries_source_and_verification() -> None:
     schedule = load_cost_schedule()
-    assert "UNVERIFIED" in schedule["unverified_notice"]
-    components = schedule["versions"][0]["components"]
-    for name in ("brokerage", "stt", "exchange_transaction_fee_nse", "sebi_turnover_fee",
-                 "stamp_duty", "gst", "ipft_and_other_levies"):
-        assert "verification" in components[name], name
-        assert "UNVERIFIED" in components[name]["verification"], name
+    assert "verified_at" in schedule
+    current = schedule["versions"][0]["components"]
+    for name, component in current.items():
+        if name == "note" or not isinstance(component, dict):
+            continue
+        assert component.get("source"), name
+        assert component.get("verification"), name
+
+
+def test_known_verified_rates() -> None:
+    components = load_cost_schedule()["versions"][0]["components"]
+    assert components["brokerage"]["cap_per_order_inr"] == 5.00
+    assert components["stt"]["rate_pct"] == 0.025 and components["stt"]["sides"] == ["sell"]
+    assert components["exchange_transaction_fee_nse"]["rate_pct"] == 0.00307
+    assert components["exchange_transaction_fee_bse"]["applies_to_this_research"] is False
+    assert components["sebi_turnover_fee"]["rate_per_crore_inr"] == 10
+    # stamp duty must keep the dual lower-of form, not a bare percentage
+    assert components["stamp_duty"]["percent"] == 0.003
+    assert components["stamp_duty"]["absolute_per_crore_inr"] == 300
+    assert components["stamp_duty"]["sides"] == ["buy"]
+    assert components["gst"]["rate_pct"] == 18
+    assert components["ipft_and_other_levies"]["gst_treatment"] == (
+        "UNVERIFIED_CONTRACT_NOTE_CHECK"
+    )
+    assert components["ipft_and_other_levies"]["included_by_default"] is False
+
+
+def test_derivatives_stt_change_is_recorded_out_of_scope() -> None:
+    notes = load_cost_schedule()["out_of_scope_notes"]
+    assert "2026-04-01" in notes["derivatives_stt_change_2026-04-01"]
+
+
+def test_jev_model_is_pinned_and_contract_recorded() -> None:
+    data = load_yaml(CONFIG_DIR / "experiments" / "jev_v1.yaml")
+    assert data["models"]["confirmatory_model_id"] == "jev-1.13.0"
+    assert data["models"]["moving_alias_allowed_in_confirmatory_replay"] is False
+    assert data["api"]["contract_status"] == "VERIFIED"
+    assert data["api"]["request_fields"] == ["state", "model", "questions"]
+    assert data["api"]["response_fields"] == ["model", "answers", "usage"]
+    assert data["api"]["usage_fields"] == ["input_tokens", "output_tokens"]
+    assert data["batching"]["array_state_is_a_batch_of_cases"] is False
+    assert data["reliability"]["retry_status_codes"] == [429, 529]
+    assert data["reliability"]["retry_other_failures"] is False
+    assert data["scoring"]["confidence_is_not_a_probability"] is True
 
 
 def test_instrument_tokens_are_not_invented() -> None:

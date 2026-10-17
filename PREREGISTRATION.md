@@ -44,7 +44,7 @@ select the best-looking version of the system.
 | Maximum quote age | `TBD — must be fixed before data inspection` | plan 8.2 |
 | Position sizing | Fixed notional, one position per symbol, duplicates rejected while a position is open; notional/cap values `TBD — must be fixed before data inspection` | plan 8.2, `config/execution_policy.yaml` |
 | Valid session | IST 09:15–15:30, exchange trading days, exchange holiday calendar `TBD — must be sourced from the exchange, never guessed` | plan 8.2 |
-| Cost schedule | `config/cost_schedule.yaml`, per-leg currency fees, effective-date versioned, **every rate currently `verification: UNVERIFIED (plan section 8.4; external verification in flight)`** | plan 8.4 |
+| Cost schedule | `config/cost_schedule.yaml`, per-leg currency fees, effective-date versioned; equity cash/intraday rates `verification: VERIFIED` against the official broker schedule (2026-10-17); the IPFT GST treatment remains `UNVERIFIED_CONTRACT_NOTE_CHECK` | plan 8.4 |
 | Cost scenarios | Base, Stress 1 (spread/slippage increased by a predeclared factor — value `TBD`), Stress 2 (greater latency/slippage plus occasional unfilled exits — values `TBD`); identical across all models | plan 8.5, `config/cost_schedule.yaml` |
 | Primary comparator | **LightGBM policy, frozen by the validation process** | plan 3.1 |
 | Comparator fallback | Declared in advance: if LightGBM cannot be trained on the primary task, the comparator is the best non-JEV baseline from the fixed ladder (plan 9.1), chosen on validation only | plan 3.1, `config/experiment.yaml` |
@@ -155,12 +155,30 @@ rather than prompting a search for a better configuration.
 
 These block execution-relevant results, not the Sprint 0 pass gate:
 
-- Every statutory fee rate in `config/cost_schedule.yaml` is unverified. Only
-  brokerage (0.03% or ₹5/order, lower) and the NSE equity transaction charge
-  (0.00307% per side, effective 1 March 2026) appear in the plan at all; STT,
-  SEBI turnover fee, stamp duty, GST and IPFT rates are absent from the plan and
-  are `null`/`TBD` here. Nothing has been invented to fill them.
+- Every statutory fee rate in `config/cost_schedule.yaml` carries an explicit
+  `source` and `verification` field. The equity cash/intraday rates were
+  verified on 2026-10-17 against the official broker schedule (brokerage 0.03%
+  or ₹5/order lower-of; STT 0.025% sell-side; NSE transaction 0.00307% per side
+  from 2026-03-01, 0.00297% before; SEBI ₹10/crore; stamp duty lower-of 0.003%
+  or ₹300/crore, buy side; GST 18% on brokerage + SEBI + transaction charges;
+  IPFT ₹0.01/crore). One residual item: the GST treatment of IPFT is
+  `UNVERIFIED_CONTRACT_NOTE_CHECK` because the broker's pricing page and FAQ
+  conflict. Re-verify the whole schedule against the then-current contract note
+  before any execution-relevant result.
+- The **feed contract is verified** (accessed 2026-10-17): the Shoonya
+  `Subscribe Market Feed` stream sends one full snapshot per instrument (`tk`)
+  followed by incremental field updates (`tf`) that the client must merge into
+  locally maintained state, exposing **L1 touchline only** (`bp1`/`sp1`) — not
+  five-level depth — with resubscription of all instruments after a reconnect and
+  reinitialisation from new snapshots. Two items remain `UNVERIFIED` pending the
+  Sprint 1 feed spike: the **connect-acknowledgement frame** and the **`ft` clock
+  semantics**. Until those are observed in a real capture, no claim about
+  connection acknowledgement or feed-clock meaning may be made.
 - All `instrument_token` values in `config/universe.yaml` are `null`, to be read
   from the live Shoonya instrument master in Sprint 1.
-- The TypeSafe `/v1/systemone` request/response contract is `NOT_VERIFIED` until
-  the Sprint 7 contract test.
+- The TypeSafe `/v1/systemone` contract is recorded as verified in
+  `config/experiments/jev_v1.yaml` (Bearer auth; request `state`/`model`/
+  `questions`; response `model`/`answers`/`usage` with `usage.input_tokens` and
+  `usage.output_tokens`), and the confirmatory model is pinned to `jev-1.13.0`.
+  A credentialed Sprint 7 contract test still has to prove the installed client
+  actually behaves that way before replay.

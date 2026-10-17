@@ -1,24 +1,31 @@
 # Cost schedule (plan section 8.4): every statutory component calculated PER LEG,
 # in rupees, before any normalisation to bps.
 #
-# VERIFICATION STATUS: every rate in this file is UNVERIFIED. Only two figures are
-# even stated in the plan (brokerage 0.03% / Rs 5 cap, and the NSE equity
-# transaction charge of 0.00307% effective 2026-03-01), and the plan itself says
-# they must be confirmed against the broker's then-current schedule and contract
-# note before any execution test. External verification is in flight with the
-# research worker; do not run an execution-relevant result until each rate here
-# carries verification: VERIFIED with a dated source.
-#
+# VERIFICATION STATUS: the equity cash/intraday rates below were verified on
+# 2026-10-17 against the official Shoonya schedule (shoonya.com/pricing and
+# https://shoonya.com/faq/pricing/what-are-your-brokerage-and-other-charges/).
+# One item is still contested - see ipft_and_other_levies.gst_treatment.
+# Re-verify the whole schedule against the broker's then-current schedule and
+# contract note before any execution-relevant test; the plan requires that check
+# independently of this file.
+cost_schedule_version: "v2"
+currency: "INR"
+basis: per_executed_leg
+verified_at: "2026-10-17"
+unverified_notice: "rates verified against shoonya.com/pricing + pricing FAQ on 2026-10-17"
+
 # Rules that hold regardless of the numbers:
 #   - fees are computed per executed leg (entry and exit separately);
 #   - brokerage is NOT a constant bps rate: the Rs 5 cap makes the effective
-#     rate notional-dependent;
+#     rate notional-dependent, so both legs must be charged separately;
+#   - stamp duty has a dual (lower-of) form and must be implemented as such;
+#   - SEBI and IPFT are absolute per-cruore charges, not percentages;
 #   - slippage/impact is modelled separately from statutory fees;
 #   - net_pnl = signed_gross_pnl - sum(all components) - modelled slippage/impact.
-cost_schedule_version: "v1"
-currency: "INR"
-basis: per_executed_leg
-unverified_notice: "UNVERIFIED (plan section 8.4; external verification in flight)"
+#
+# Segment caveat: the primary path is NSE cash equity. BSE equity transaction
+# charge is 0.00183% per side and is recorded only for completeness; it must not
+# be applied to an NSE instrument.
 
 versions:
   - effective_from: "2026-03-01"
@@ -32,79 +39,113 @@ versions:
         cap_per_order_inr: 5.00
         cap_rule: "min(percent * turnover, cap_per_order_inr)"
         per: executed_order
-        source: "plan section 8.4, citing the Shoonya pricing page reviewed 2026-10-17"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       stt:
         applies_to: equity_intraday
         type: percent_of_turnover
-        rate_pct: null          # TBD - must be filled from the current statutory schedule
-        sides: [sell]           # intraday equity STT applies on the sell side
+        rate_pct: 0.025
+        sides: [sell]           # intraday equity STT applies on the sell side only
         per: executed_order
-        source: "plan section 8.4 (rate not stated in plan)"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       exchange_transaction_fee_nse:
         applies_to: equity
         type: percent_of_turnover
         rate_pct: 0.00307
         sides: [buy, sell]
-        effective_from_note: "effective 2026-03-01 per plan section 8.4"
+        effective_from_note: "effective 2026-03-01; superseded 0.00297% (see earlier version entry)"
         per: executed_order
-        source: "plan section 8.4, citing the Shoonya pricing page reviewed 2026-10-17"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+
+      exchange_transaction_fee_bse:
+        applies_to: equity
+        segment: BSE
+        applies_to_this_research: false   # primary path is NSE; recorded for completeness only
+        type: percent_of_turnover
+        rate_pct: 0.00183
+        sides: [buy, sell]
+        per: executed_order
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       sebi_turnover_fee:
         applies_to: equity
-        type: percent_of_turnover
-        rate_pct: null          # TBD - must be filled from the current SEBI schedule
+        type: absolute_per_crore
+        rate_per_crore_inr: 10
         sides: [buy, sell]
+        crore_inr: 10000000
         per: executed_order
-        source: "plan section 8.4 (rate not stated in plan)"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       stamp_duty:
         applies_to: equity
-        type: percent_of_turnover
-        rate_pct: null          # TBD - must be filled from the current statutory schedule
+        type: percent_or_absolute_lower_of
+        percent: 0.003
+        absolute_per_crore_inr: 300
+        lower_of_rule: "min(percent * turnover, absolute_per_crore_inr * turnover / crore)"
         sides: [buy]
         per: executed_order
-        source: "plan section 8.4 (rate not stated in plan)"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       gst:
         applies_to: equity
         type: percent_of_taxable_base
-        rate_pct: null          # TBD - must be filled from the current statutory schedule
+        rate_pct: 18
         taxable_base: [brokerage, sebi_turnover_fee, exchange_transaction_fee_nse]
         taxable_base_note: >-
-          The broker schedule currently specifies brokerage, SEBI charges and
-          transaction charges as the taxable base (plan section 8.4). Confirm
-          against the then-current broker schedule.
+          GST applies to brokerage, SEBI charges and exchange transaction
+          charges only - not to STT, stamp duty or IPFT.
         per: executed_order
-        source: "plan section 8.4 (rate not stated in plan)"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
 
       ipft_and_other_levies:
         applies_to: equity
-        type: percent_of_turnover
-        rate_pct: null          # TBD - fill only if actually charged; do not assume
+        type: absolute_per_crore
+        rate_per_crore_inr: 0.01
+        basis: traded_value
+        crore_inr: 10000000
         sides: [buy, sell]
-        included_by_default: false
-        note: "IPFT/other segment levies are included only when the broker actually charges them."
+        included_by_default: false   # only charged when the broker actually charges it
+        gst_treatment: "UNVERIFIED_CONTRACT_NOTE_CHECK"
+        gst_treatment_note: >-
+          The broker pricing page and the FAQ disagree on whether IPFT is
+          chargeable to GST. Treat the GST treatment as unresolved until the
+          broker contract note is checked.
         per: executed_order
-        source: "plan section 8.4"
-        verification: "UNVERIFIED (plan section 8.4; external verification in flight)"
+        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
+        verification: "PARTIAL - rate VERIFIED; gst_treatment UNVERIFIED_CONTRACT_NOTE_CHECK"
 
-      slippage_and_impact:
+  - effective_from: null          # historical, superseded
+    effective_to: "2026-02-28"
+    components:
+      exchange_transaction_fee_nse:
         applies_to: equity
-        type: modelled_separately
-        included_in_statutory_fees: false
-        note: >-
-          Modelled in the execution simulator, never folded into the statutory
-          fee engine. Scenario-dependent (see execution_policy.yaml).
-        source: "plan sections 8.3 / 8.4"
-        verification: "N/A - model assumption, not a statutory rate"
+        type: percent_of_turnover
+        rate_pct: 0.00297
+        sides: [buy, sell]
+        per: executed_order
+        source: "shoonya.com/pricing schedule history, accessed 2026-10-17"
+        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+      note: >-
+        Only the exchange transaction charge differed before 2026-03-01. The
+        other components above were already in force; when an execution falls
+        before 2026-03-01, use this version's NSE transaction charge with the
+        current rates for the remaining components.
+
+out_of_scope_notes:
+  derivatives_stt_change_2026-04-01: >-
+    On 2026-04-01 STT changed for futures and options (futures 0.05% on the sell
+    side, options 0.15% on premium). Both are outside the scope of this project:
+    the primary path is NSE cash-equity intraday, and plan 2.2 excludes
+    derivatives. Recorded here so the dated change is not mistaken for a cash
+    equity rate.
 
 scenarios:
   - name: base

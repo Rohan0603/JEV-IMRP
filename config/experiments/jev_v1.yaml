@@ -1,52 +1,75 @@
-# JEV challenger experiment skeleton (plan sections 9.3 / 9.4). Nothing here has
-# been run; no API call has been made and no response has been observed.
+# JEV challenger experiment configuration (plan sections 9.3 / 9.4).
+# No replay has been run and no API call has been made from this repository yet.
 experiment_id: jev_v1
 experiment_type: confirmatory_challenger
-experiment_config_version: "v1"
+experiment_config_version: "v2"
 mode: research_only
 
 api:
   endpoint: https://api.typesafe.ai/v1/systemone
   method: POST
-  contract_status: NOT_VERIFIED
-  contract_note: >-
-    Endpoint shape is taken from the plan (section 9.3), which states the
-    documented request carries `state`, `model` and named `questions`, and the
-    response carries `model`, `answers` and `usage`. A contract test against the
-    official documentation and a real credentialed call is a Sprint 7 gate
-    before any replay. The legacy /v1/decisions + judgments + decision shape must
-    NOT be used.
-  credentials_source: environment_variable_only   # never in config, code, or logs
+  contract_status: VERIFIED
+  verified_at: "2026-10-17"
+  verified_against: "official TypeSafe API documentation, https://docs.typesafe.ai/api"
+  auth: "Bearer token from an environment variable; never from config, code, or logs"
+  request_fields: [state, model, questions]
+  response_fields: [model, answers, usage]
+  usage_fields: [input_tokens, output_tokens]
+  credentials_source: environment_variable_only
+
+models:
+  confirmatory_model_id: jev-1.13.0
+  confirmatory_model_pinned: true
+  alias_snapshot_2026-10-17:
+    "jev-latest": jev-1.13.0
+    "jev-preview": jev-1.14.0
+  alias_note: >-
+    jev-latest and jev-preview are moving aliases and can be repointed without
+    notice. A confirmatory replay must request jev-1.13.0 by exact ID. Always log
+    the `model` value returned in the response and treat a returned model other
+    than the requested one as a failure to be recorded, never silently accepted.
+  moving_alias_allowed_in_confirmatory_replay: false
+  moving_alias_note: "aliases may only be studied in a separate operational-drift experiment."
 
 request_policy:
-  model_id: null              # TBD - exact model must be pinned before any confirmatory run
-  moving_alias_allowed_in_confirmatory_replay: false
-  moving_alias_note: "`jev-latest` may only be tested in a separate operational-drift study."
   prompt_version: null        # TBD - frozen before the holdout
-  question_id: null
+  question_id: null           # TBD
   question_type: accept_reject
   state_payload_canonical_form: null   # TBD - canonical state/payload plus its input hash
   state_input_hash_algorithm: sha256
+
+batching:
+  one_request_per_candidate_state: true
+  multiple_questions_may_share_one_state: true
+  array_state_is_a_batch_of_cases: false
+  batch_note: >-
+    The contract accepts a single `state`. Several questions may be batched
+    inside one request against that state; an array of states is NOT a batch of
+    independent candidate cases and must never be treated as one.
 
 reliability:
   bounded_concurrency: true
   max_concurrent_requests: null    # TBD - must be fixed before data inspection
   rate_limit_rps: null            # TBD - must be fixed before data inspection
-  timeout_seconds: null           # TBD - must be fixed before data inspection
-  retry_backoff: "exponential on transient 5xx/overload only"
-  max_retries: null               # TBD - must be fixed before data inspection
+  timeout_seconds: null           # TBD - must be fixed before data inspection (explicit client timeouts)
+  retry_status_codes: [429, 529]
+  retry_backoff: "exponential with jitter, on 429 and 529 only"
+  retry_other_failures: false
+  retry_note: >-
+    No idempotency guarantee is documented, so 4xx and 5xx responses other than
+    429/529 are never retried blindly: a repeated call could duplicate a
+    billed, stateful request.
   persist_every_attempt: true     # successes AND failures, durably
   one_task_per_historical_row: false
-  batch_by_state_when_supported: true
-  batch_note: "do not assume an array of states is a batch of independent cases unless the API contract says so"
 
 failure_policy:
   coverage_and_failure_rate_reported: true
   silent_drop_of_failures: forbidden
-  candidate_policy: reject      # TBD - reject / skip / fallback must be pre-declared and applied to all comparisons
+  candidate_policy: reject      # reject / skip / fallback must be pre-declared and applied to all comparisons
 
 scoring:
   answer_probability_is_not_calibrated_profit_probability: true
+  confidence_is_not_a_probability: true
   use: ranking_and_decision_score
   calibration_required_before_probability_claims: true
   matched_coverage_threshold_selection: validation_only

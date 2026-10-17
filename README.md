@@ -20,15 +20,17 @@ sprints.
 > observation only. It contains **no order-placement code, no broker
 > credentials, and no live trading capability**, and none may be added without
 > passing the separate operational and regulatory gate in Sprint 10 of the plan.
-> Every cost rate and instrument token here is unverified; nothing here may be
-> used to justify real money.
+> Every instrument token here is still unset, the IPFT GST treatment is
+> unverified, and the fee schedule must be re-checked against the broker's
+> contract note before any execution-relevant result; nothing here may be used
+> to justify real money.
 
 ## Layout
 
 ```text
 config/
   universe.yaml            frozen 20-name NSE cash-equity universe + eligibility rule
-  cost_schedule.yaml       per-leg statutory fees, effective-date versioned (UNVERIFIED)
+  cost_schedule.yaml       per-leg statutory fees, effective-date versioned (verified 2026-10-17)
   execution_policy.yaml    sizing, overlap, latency, quote age, session, fill policy
   feature_config.yaml      feature definition/version registry (computation lands in Sprint 2)
   experiment.yaml          frozen research-contract pointers and holdout rules
