@@ -1,0 +1,74 @@
+# Baseline experiment skeleton (plan sections 3.1 and 9.1). No results are
+# recorded here; this is a frozen configuration skeleton.
+experiment_id: baseline_v1
+experiment_type: confirmatory_baseline_ladder
+experiment_config_version: "v1"
+owner: research
+mode: research_only
+
+candidates:
+  strategy_version: null       # TBD - candidate-signal generator version must be fixed before data inspection
+  side_source: candidate_generator   # direction is decided upstream, never by the filter
+  decision: accept_reject_only
+
+ladder:                        # run in this order (plan 9.1)
+  - name: unfiltered
+    description: "Does the candidate strategy have any net opportunity at all?"
+  - name: matched_random
+    description: "Random accept at each model's coverage, matched within predeclared day/session strata"
+    draws: null               # TBD - must be fixed before data inspection
+    strata: [day, session]
+  - name: cost_aware_rule
+    description: "Reject candidates whose training-only expected gross opportunity is insufficient vs cost plus a preregistered safety margin"
+    safety_margin_bps: null   # TBD - must be fixed before data inspection
+  - name: fixed_rules
+    description: "Small pre-registered spread / volatility / time-of-day rule set; no large grid search"
+    rule_set_version: null    # TBD - must be fixed before data inspection
+  - name: linear_baseline
+    task: null                # TBD - binary net-profitability classification or continuous net-return regression
+    preprocessing: fit_within_each_training_fold_only
+  - name: lightgbm
+    role: primary_comparator
+    task: null                # TBD - must match the chosen task
+    hyperparameter_ranges: null   # TBD - small preregistered range, limited tuning
+    max_training_size: null
+
+fairness_constraints:          # plan 9.2 - identical for every contestant
+  shared_candidate_set: true
+  shared_point_in_time_features: true
+  shared_labels_and_horizon: true
+  shared_execution_and_fee_model: true
+  shared_test_sessions: true
+  shared_capital_and_overlap_rules: true
+  shared_target_acceptance_rate: true
+  shared_missing_data_policy: true
+
+evaluation:
+  primary_metric: paired_daily_portfolio_net_pnl_difference
+  secondary_metrics:
+    - net_expectancy_per_executed_trade
+    - net_expectancy_per_candidate
+    - acceptance_coverage_rate
+    - win_rate
+    - quintile_q1_q5_curve
+    - q5_minus_q1
+    - worst_day
+    - tail_quantiles
+    - max_drawdown
+    - turnover
+    - capital_utilisation
+    - simultaneous_exposure
+    - api_latency_availability_cost
+  bootstrap: day_block_paired
+  resamples: 10000
+  resamples_note: "a computational choice, not a cure for few independent sessions (plan 10.4)"
+
+ablation_groups:               # training/validation only (plan 7.4)
+  - [price_return_time]
+  - [price_return_time, volatility, volume]
+  - [price_return_time, volatility, volume, spread, touch_size]
+  - [price_return_time, volatility, volume, spread, touch_size, market_sector_context]
+
+artifacts:
+  trial_ledger: experiments/trial_ledger.csv
+  runs_dir: experiments/runs
