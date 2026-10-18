@@ -177,17 +177,27 @@ def cost_aware_policy(
 def test_cost_aware_filter_accepts_only_where_expected_gross_beats_cost_plus_margin() -> None:
     policy = cost_aware_policy()
     decisions = {d.signal_id: d for d in policy.decide_batch(candidates())}
-    accepted = {sid for sid, d in decisions.items() if d.decision is Decision.ACCEPT}
+    # Verify each decision is consistent with the training estimates
+    # (bucketing is applied in decide(), so we test through decide_batch)
     for candidate in candidates():
-        bucket = candidate.feature("tod_minutes_since_open")
+        decision = decisions[candidate.signal_id]
+        raw_bucket = candidate.feature("tod_minutes_since_open")
+        if raw_bucket is None:
+            assert decision.decision is Decision.REJECT
+            continue
+        # Need to apply same bucket function as decide()
+        bucket = round(
+            float(raw_bucket) / policy.estimates.bucket_width
+        ) * policy.estimates.bucket_width
         estimate = policy.estimates.estimate_for(bucket)
         if estimate is None:
+            # No estimate for this bucket - decision should reflect that
             continue
         gross, cost = estimate
         if gross - cost - policy.safety_margin_bps <= 0:
-            assert candidate.signal_id not in accepted
+            assert decision.decision is Decision.REJECT
         else:
-            assert candidate.signal_id in accepted
+            assert decision.decision is Decision.ACCEPT
 
 
 def test_cost_aware_estimates_refuse_non_training_sessions() -> None:
@@ -259,6 +269,15 @@ def test_cost_aware_rejects_buckets_without_training_support() -> None:
     assert decision.reason == "no_training_estimate_for_bucket"
 
 
+def test_at_least_one_candidate_receives_a_training_estimate() -> None:
+    """At least one synthetic candidate must bucket into a training estimate."""
+    policy = cost_aware_policy()
+    pool = candidates()
+    decisions = policy.decide_batch(pool)
+    accepted = [d for d in decisions if d.decision is Decision.ACCEPT]
+    assert accepted, "expected at least one candidate to receive a training estimate"
+
+
 def test_cost_aware_rejects_a_candidate_with_a_missing_bucket() -> None:
     policy = cost_aware_policy()
     candidate = candidates()[0]
@@ -298,9 +317,39 @@ def test_rules_are_deterministic() -> None:
     assert RulePolicy().version == "rules_v1"
 
 
+def _edge_candidate(**feature_overrides: float) -> CandidateRecord:
+    """A valid candidate with selected feature overrides for branch coverage."""
+    candidate = candidates()[0]
+    features = {
+        "spread_bps": 5.0,
+        "atr_pct": 1.0,
+        "tod_minutes_since_open": 60.0,
+        # always override with the provided values
+        **feature_overrides,
+    }
+    return rebuild(
+        candidate,
+        signal_id=f"edge|{id(features)}",
+        features=features,
+    )
+
+
 def test_rules_apply_the_pre_registered_thresholds() -> None:
     policy = RulePolicy()
-    pool = candidates()
+    # Synthetic stream + constructed edge candidates to cover every rule branch.
+    pool = [
+        *candidates(),
+        # spread above max
+        _edge_candidate(spread_bps=10.0),
+        # volatility below min
+        _edge_candidate(atr_pct=0.01),
+        # volatility above max
+        _edge_candidate(atr_pct=9.0),
+        # time of day excluded (before session open + 15 min)
+        _edge_candidate(tod_minutes_since_open=5.0),
+        # time of day excluded (after 330 min)
+        _edge_candidate(tod_minutes_since_open=340.0),
+    ]
     decisions = {d.signal_id: d for d in policy.decide_batch(pool)}
     for candidate in pool:
         spread = float(candidate.feature("spread_bps"))  # type: ignore[arg-type]
@@ -314,7 +363,7 @@ def test_rules_apply_the_pre_registered_thresholds() -> None:
             <= policy.spec.max_atr_pct
         ):  # type: ignore[arg-type]
             assert reason in ("volatility_below_min", "volatility_above_max")
-        elif not policy.spec._within_tod(minutes):
+        elif not policy._within_tod(minutes):
             assert reason == "time_of_day_excluded"
         else:
             assert reason == "rules_passed"

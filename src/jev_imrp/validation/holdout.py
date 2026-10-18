@@ -69,6 +69,7 @@ class HoldoutLease:
         self.opening = opening
 
     def __enter__(self) -> HoldoutLease:
+        self._guard._lease.set(self)
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -77,9 +78,6 @@ class HoldoutLease:
     def read(self, rows: Iterable[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
         """Read holdout rows under the open lease."""
         return self._guard.holdout_view(rows)
-
-
-_ACTIVE_LEASE: ContextVar[HoldoutLease | None] = ContextVar("jev_holdout_lease", default=None)
 
 
 class HoldoutGuard:
@@ -117,7 +115,10 @@ class HoldoutGuard:
     def is_holdout_row(self, row: Mapping[str, Any]) -> bool:
         stamp = row.get(self.timestamp_key)
         if not isinstance(stamp, datetime):
-            return False
+            raise HoldoutError(
+                f"row is missing a usable {self.timestamp_key} timestamp; "
+                "holdout membership cannot be determined without it"
+            )
         return self.is_holdout_session(ist_session_date(ensure_aware(stamp)))
 
     def holdout_rows(self, rows: Iterable[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
@@ -174,18 +175,27 @@ class HoldoutGuard:
         return lease
 
     def holdout_view(self, rows: Iterable[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
-        """Read holdout rows; requires an open lease."""
-        lease = self._lease.get() or _ACTIVE_LEASE.get()
+        """Read holdout rows; requires an open lease.
+
+        Every row must be a holdout row.  A mixed batch (development + holdout)
+        raises so that the lease cannot be used as a leaky pass-through.
+        """
+        lease = self._lease.get()
         if lease is None or lease._guard is not self:
             raise HoldoutAccessError(
                 "refused: the locked holdout is closed. Call open_holdout(run_id=..., who=..., "
                 "why=...) for the single frozen confirmatory run first."
             )
         materialised = tuple(rows)
-        if not self.holdout_rows(materialised):
+        if not all(self.is_holdout_row(row) for row in materialised):
             raise HoldoutAccessError(
                 "refused: an open lease was used on rows that contain no holdout observation; "
                 "the lease is scoped to the holdout and must not be used to read other data."
+            )
+        if not materialised:
+            raise HoldoutAccessError(
+                "refused: an open lease was used on an empty row set; "
+                "the lease is scoped to the holdout."
             )
         return materialised
 

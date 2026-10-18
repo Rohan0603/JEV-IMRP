@@ -200,6 +200,10 @@ def _interval(
 ) -> tuple[datetime | None, datetime | None]:
     start = row.get(start_key)
     end = row.get(end_key)
+    if start is not None and not isinstance(start, datetime):
+        raise PurgeError(f"{start_key} must be None or an aware datetime")
+    if end is not None and not isinstance(end, datetime):
+        raise PurgeError(f"{end_key} must be None or an aware datetime")
     return (
         ensure_aware(start) if isinstance(start, datetime) else None,
         ensure_aware(end) if isinstance(end, datetime) else None,

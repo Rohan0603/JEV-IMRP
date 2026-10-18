@@ -172,10 +172,29 @@ class UnfilteredPolicy:
 # -- reproducibility: every configuration registers one ledger line ----------
 
 
-def config_digest(config: Mapping[str, Any]) -> str:
-    """Short, stable digest of a policy configuration for the trial ledger."""
-    payload = json.dumps(dict(sorted(config.items())), sort_keys=True, default=str)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
+def config_digest(
+    config: Mapping[str, Any],
+    *,
+    name: str = "",
+    version: str = "",
+    seed: int = 0,
+) -> str:
+    """Short, stable digest of a policy configuration for the trial ledger.
+
+    ``config`` is the raw policy config dict.  ``name``, ``version`` and ``seed``
+    are included so that different policies with different versions or seeds get
+    different trial identifiers even when their feature-level config happens to
+    be identical.
+    """
+    payload = dict(sorted(config.items()))
+    if name:
+        payload["name"] = name
+    if version:
+        payload["version"] = version
+    if seed:
+        payload["seed"] = seed
+    payload_json = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(payload_json.encode("utf-8")).hexdigest()[:12]
 
 
 def register_policy_trial(
@@ -206,7 +225,7 @@ def register_policy_trial(
     columns; nothing here writes the CSV by hand.
     """
     config_map = dict(config) if config is not None else dict(getattr(policy, "config", dict)())
-    digest = config_digest(config_map)
+    digest = config_digest(config_map, name=policy.name, version=policy.version, seed=policy.seed)
     trial_id = f"{policy.name}-{digest}"
     row: dict[str, Any] = {
         "trial_id": trial_id,
@@ -220,7 +239,7 @@ def register_policy_trial(
         "feature_set_version": feature_set_version,
         "candidate_strategy_version": candidate_strategy_version,
         "horizon_minutes": horizon_minutes,
-        "target": "net_return_30m",
+        "target": f"net_return_{horizon_minutes}m",
         "cost_scenario": cost_scenario,
         "model_family": "baseline_policy",
         "model_version": policy.version,
@@ -236,7 +255,7 @@ def register_policy_trial(
         "secondary_metrics_json": json.dumps(
             dict(sorted((secondary_metrics or {}).items())), default=str
         ),
-        "notes": notes or f"SYNTHETIC-FREE policy trial for {policy.name}; digest {digest}",
+        "notes": notes or f"policy trial for {policy.name}; digest {digest}",
     }
     return append_trial(row, Path(ledger_path) if ledger_path else None)
 

@@ -137,6 +137,9 @@ class CandidateRecord:
 
     @staticmethod
     def from_row(row: Mapping[str, Any]) -> CandidateRecord:
+        schema_version = str(row.get("schema_version") or CANDIDATE_SCHEMA_VERSION)
+        if schema_version != CANDIDATE_SCHEMA_VERSION:
+            raise CandidateError(f"unsupported candidate schema version: {schema_version}")
         # ``feature_snapshot_id``/``feature_hash`` are lineage metadata, not features.
         metadata = {"feature_snapshot_id", "feature_hash"}
         features = {
@@ -158,6 +161,7 @@ class CandidateRecord:
             eligibility_reason=str(row["eligibility_reason"]),
             features=features,
             is_synthetic=bool(row.get("is_synthetic", False)),
+            schema_version=schema_version,
         )
 
     def as_dict(self) -> dict[str, Any]:

@@ -71,16 +71,18 @@ def feature_hash(features: Mapping[str, float | str | None]) -> str:
 
 
 def _normalise_input(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    # Materialize once so we can iterate multiple times
+    materialized: list[Mapping[str, Any]] = list(rows)
     missing = {
         key
-        for row in rows
+        for row in materialized
         for key in ("symbol", "timestamp_utc", "bid_price_1", "ask_price_1")
         if key not in row
     }
     if missing:
         raise ValueError(f"synthetic input rows are missing key(s): {sorted(missing)}")
     normalised: list[Mapping[str, Any]] = []
-    for row in rows:
+    for row in materialized:
         item = dict(row)
         item["timestamp_utc"] = ensure_aware(item["timestamp_utc"])
         item.setdefault(

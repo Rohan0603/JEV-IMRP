@@ -23,6 +23,8 @@ policy shared with the other policies (plan 9.2).
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -41,6 +43,21 @@ DEFAULT_BUCKET_KEY = "tod_minutes_since_open"
 DEFAULT_GROSS_KEY = "gross_bps"
 DEFAULT_COST_KEY = "cost_bps"
 
+#: Width of the time-of-day bucket in minutes. Zero disables bucketing.
+DEFAULT_BUCKET_WIDTH = 30.0
+
+
+def _bucket_tod(minutes: float, width: float) -> float:
+    """Round a continuous time-of-day value to a discrete bucket.
+
+    ``round(value / width) * width`` keeps the bucket centre consistent across
+    training and decision paths so a candidate at 30.4 minutes and a training
+    row at 30.0 minutes land in the same bucket.
+    """
+    if width <= 0:
+        return float(minutes)
+    return round(float(minutes) / width) * width
+
 
 @dataclass(frozen=True, slots=True)
 class TrainingEstimates:
@@ -56,6 +73,7 @@ class TrainingEstimates:
     n_training_rows: int
     horizon_minutes: int = 30
     version: str = COST_AWARE_POLICY_VERSION
+    bucket_width: float = DEFAULT_BUCKET_WIDTH
 
     @staticmethod
     def fit(
@@ -67,6 +85,7 @@ class TrainingEstimates:
         cost_key: str = DEFAULT_COST_KEY,
         horizon_minutes: int = 30,
         timestamp_key: str = "decision_timestamp_utc",
+        bucket_width: float = DEFAULT_BUCKET_WIDTH,
     ) -> TrainingEstimates:
         """Mean per-bucket estimates from training rows.
 
@@ -92,7 +111,10 @@ class TrainingEstimates:
                     f"cost-aware estimates: row from session {session.isoformat()} is not a "
                     "training session; expected move may not be estimated from it"
                 )
-            bucket = row.get(bucket_key)
+            raw_bucket = row.get(bucket_key)
+            if raw_bucket is None:
+                continue
+            bucket = _bucket_tod(float(raw_bucket), bucket_width)
             gross_value = row.get(gross_key)
             cost_value = row.get(cost_key)
             if bucket is None or gross_value is None or cost_value is None:
@@ -109,6 +131,7 @@ class TrainingEstimates:
             training_sessions=frozenset(sessions),
             n_training_rows=count,
             horizon_minutes=horizon_minutes,
+            bucket_width=bucket_width,
         )
 
     def estimate_for(self, bucket: Any) -> tuple[float, float] | None:
@@ -142,20 +165,38 @@ class CostAwarePolicy:
     version: str = COST_AWARE_POLICY_VERSION
 
     def config(self) -> dict[str, Any]:
+        # Estimates-content fingerprint so two policies with the same
+        # parameters but different training data get different trial ids.
+        fingerprint = hashlib.sha256(
+            json.dumps(
+                {
+                    str(k): [
+                        self.estimates.gross_bps_by_bucket[k],
+                        self.estimates.cost_bps_by_bucket.get(k, 0.0),
+                    ]
+                    for k in sorted(self.estimates.gross_bps_by_bucket, key=str)
+                },
+                sort_keys=True,
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()[:12]
         return {
             "safety_margin_bps": self.safety_margin_bps,
             "bucket_key": self.bucket_key,
             "horizon_minutes": self.estimates.horizon_minutes,
             "n_training_rows": self.estimates.n_training_rows,
             "n_training_sessions": len(self.estimates.training_sessions),
+            "estimates_fingerprint": fingerprint,
+            "bucket_width": self.estimates.bucket_width,
         }
 
     def decide(self, candidate: CandidateRecord) -> PolicyDecision:
-        bucket = candidate.feature(self.bucket_key)
-        if bucket is None:
+        raw = candidate.feature(self.bucket_key)
+        if raw is None:
             return PolicyDecision(
                 candidate.signal_id, Decision.REJECT, f"missing_feature:{self.bucket_key}"
             )
+        bucket = _bucket_tod(float(raw), self.estimates.bucket_width)
         estimate = self.estimates.estimate_for(bucket)
         if estimate is None:
             return PolicyDecision(
@@ -184,6 +225,7 @@ class CostAwarePolicy:
 __all__: tuple[str, ...] = (
     "COST_AWARE_POLICY_VERSION",
     "DEFAULT_BUCKET_KEY",
+    "DEFAULT_BUCKET_WIDTH",
     "DEFAULT_COST_KEY",
     "DEFAULT_GROSS_KEY",
     "DEFAULT_SAFETY_MARGIN_BPS",
