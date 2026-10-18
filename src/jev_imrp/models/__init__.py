@@ -1,16 +1,33 @@
-"""Model contestants.
+"""Baseline selection policies on the shared candidate stream (plan 9.1).
 
-The ladder order is fixed by plan 9.1: unfiltered, matched random, cost-aware
-filter, fixed rules, linear, LightGBM, then JEV. Each contestant receives the
-same candidates and equivalent point-in-time feature information (plan 9.2).
-
-Sprint 4 owns :mod:`~jev_imrp.models.random_filter` and
-:mod:`~jev_imrp.models.rules`; this sprint adds the JEV client and its
-deterministic mock.
+Rungs 1-4 of the model ladder, all implementing the same
+:class:`~jev_imrp.models.policy.Policy` interface: rung 1 unfiltered, rung 2
+matched random with repeated draws, rung 3 cost-aware deterministic, rung 4 fixed
+mechanical rules. Later rungs (linear baseline, LightGBM, JEV) are added by the
+model workers and must use this same interface and the same fairness conventions.
 """
 
 from __future__ import annotations
 
+from jev_imrp.models.cost_aware_filter import (
+    COST_AWARE_POLICY_VERSION,
+    DEFAULT_SAFETY_MARGIN_BPS,
+    CostAwarePolicy,
+    TrainingEstimates,
+)
+from jev_imrp.models.policy import (
+    Decision,
+    Policy,
+    PolicyDecision,
+    PolicyError,
+    PolicyResult,
+    UnfilteredPolicy,
+    apply_policy,
+    config_digest,
+    register_policy_trial,
+)
+from jev_imrp.models.random_filter import RANDOM_POLICY_VERSION, RandomPolicy
+from jev_imrp.models.rules import PRE_REGISTERED_RULES, RULES_VERSION, RulePolicy, RuleSpec
 from jev_imrp.models.jev_client import (
     CONFIRMATORY_MODEL_ID,
     DEPRECATED_ENDPOINTS,
@@ -39,7 +56,9 @@ from jev_imrp.models.jev_client import (
 )
 from jev_imrp.models.jev_mock import MockConfig, MockJevClient
 
-__all__ = [
+__all__: tuple[str, ...] = (
+    "COST_AWARE_POLICY_VERSION",
+    "DEFAULT_SAFETY_MARGIN_BPS",
     "CONFIRMATORY_MODEL_ID",
     "DEPRECATED_ENDPOINTS",
     "ENDPOINT",
@@ -60,10 +79,26 @@ __all__ = [
     "ParsedResponse",
     "Question",
     "RetryPolicy",
+    "PRE_REGISTERED_RULES",
+    "RANDOM_POLICY_VERSION",
+    "RULES_VERSION",
+    "CostAwarePolicy",
+    "Decision",
+    "Policy",
+    "PolicyDecision",
+    "PolicyError",
+    "PolicyResult",
+    "RandomPolicy",
+    "RulePolicy",
+    "RuleSpec",
+    "TrainingEstimates",
+    "UnfilteredPolicy",
     "accept_reject_question",
     "build_request",
     "build_state",
     "canonical_hash",
+    "config_digest",
+    "register_policy_trial",
     "validate_request",
     "validate_response",
-]
+)
