@@ -119,7 +119,13 @@ class HoldoutGuard:
                 f"row is missing a usable {self.timestamp_key} timestamp; "
                 "holdout membership cannot be determined without it"
             )
-        return self.is_holdout_session(ist_session_date(ensure_aware(stamp)))
+        try:
+            aware_stamp = ensure_aware(stamp)
+        except ValueError as exc:
+            raise HoldoutError(
+                f"row {self.timestamp_key} timestamp is invalid: {stamp!r}"
+            ) from exc
+        return self.is_holdout_session(ist_session_date(aware_stamp))
 
     def holdout_rows(self, rows: Iterable[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
         return tuple(row for row in rows if self.is_holdout_row(row))

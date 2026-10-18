@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -196,7 +197,19 @@ class CostAwarePolicy:
             return PolicyDecision(
                 candidate.signal_id, Decision.REJECT, f"missing_feature:{self.bucket_key}"
             )
-        bucket = _bucket_tod(float(raw), self.estimates.bucket_width)
+        try:
+            value = float(raw)
+        except (TypeError, ValueError) as exc:
+            raise PolicyError(
+                f"candidate {candidate.signal_id} has non-numeric {self.bucket_key}: {raw!r}"
+            ) from exc
+        if not math.isfinite(value):
+            return PolicyDecision(
+                candidate.signal_id,
+                Decision.REJECT,
+                f"invalid_feature:{self.bucket_key}",
+            )
+        bucket = _bucket_tod(value, self.estimates.bucket_width)
         estimate = self.estimates.estimate_for(bucket)
         if estimate is None:
             return PolicyDecision(
