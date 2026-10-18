@@ -199,10 +199,10 @@ class CostAwarePolicy:
             )
         try:
             value = float(raw)
-        except (TypeError, ValueError) as exc:
-            raise PolicyError(
-                f"candidate {candidate.signal_id} has non-numeric {self.bucket_key}: {raw!r}"
-            ) from exc
+        except (TypeError, ValueError):
+            return PolicyDecision(
+                candidate.signal_id, Decision.REJECT, f"invalid-feature:{self.bucket_key}"
+            )
         if not math.isfinite(value):
             return PolicyDecision(
                 candidate.signal_id,
