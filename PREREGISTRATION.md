@@ -176,6 +176,12 @@ These block execution-relevant results, not the Sprint 0 pass gate:
   connection acknowledgement or feed-clock meaning may be made.
 - All `instrument_token` values in `config/universe.yaml` are `null`, to be read
   from the live Shoonya instrument master in Sprint 1.
+  **RESOLVED 2026-10-26 (Sprint 1).** All 20 tokens were resolved via the live
+  Shoonya `SearchScrip` endpoint using the official `NorenRestApiPy` SDK with
+  OAuth login. The original `TATAMOTORS` entry was replaced with
+  `TVSMOTOR-EQ` (token 8479) because no instrument named `TATAMOTORS` exists on
+  any Shoonya exchange symbol master (NSE/BSE/NFO/CDS/MCX/BFO). See
+  `README.md` for the full broker contract notes.
 - The TypeSafe `/v1/systemone` contract is recorded as verified in
   `config/experiments/jev_v1.yaml` (Bearer auth; request `state`/`model`/
   `questions`; response `model`/`answers`/`usage` with `usage.input_tokens` and

@@ -392,11 +392,12 @@ def test_instrument_master_reports_unresolved_tokens():
     assert master.symbols(), "the frozen universe must load"
     assert master.universe_version == "v1"
     unresolved = master.unresolved_tokens()
-    assert len(unresolved) == len(master.symbols()), (
-        "Sprint 0 left every broker token null; they must be read from the live "
-        "instrument master, never invented"
-    )
-    assert master.tick_sizes() == {}, "no tick check is possible without a token"
+    # Sprint 1 resolved all tokens from the live Shoonya instrument master.
+    # The original TATAMOTORS entry was replaced with TVSMOTOR-EQ because no
+    # instrument named TATAMOTORS exists on any Shoonya exchange symbol master.
+    assert unresolved == [], f"expected no unresolved tokens, found {unresolved}"
+    tick_sizes = master.tick_sizes()
+    assert len(tick_sizes) == 20
 
 
 

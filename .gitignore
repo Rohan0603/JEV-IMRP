@@ -25,3 +25,6 @@ dist/
 .hypothesis/
 .coverage
 htmlcov/
+
+# local tooling config
+.codex/

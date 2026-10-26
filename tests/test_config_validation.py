@@ -148,7 +148,12 @@ def test_jev_model_is_pinned_and_contract_recorded() -> None:
 
 
 def test_instrument_tokens_are_not_invented() -> None:
+    """Sprint 1 resolved all tokens from the live Shoonya instrument master.
+
+    The original TATAMOTORS entry was replaced with TVSMOTOR-EQ because no
+    instrument named TATAMOTORS exists on any Shoonya exchange symbol master.
+    """
     instruments = load_universe()["instruments"]
     assert len(instruments) == 20
     assert len({i["symbol"] for i in instruments}) == 20
-    assert all(i["instrument_token"] is None for i in instruments)
+    assert all(i["instrument_token"] is not None for i in instruments)

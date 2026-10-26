@@ -20,10 +20,47 @@ sprints.
 > observation only. It contains **no order-placement code, no broker
 > credentials, and no live trading capability**, and none may be added without
 > passing the separate operational and regulatory gate in Sprint 10 of the plan.
-> Every instrument token here is still unset, the IPFT GST treatment is
-> unverified, and the fee schedule must be re-checked against the broker's
-> contract note before any execution-relevant result; nothing here may be used
-> to justify real money.
+> The fee schedule must be re-checked against the broker's contract note before
+> any execution-relevant result; nothing here may be used to justify real money.
+
+> ## 🔌 Shoonya broker contract (Sprint 1)
+>
+> The broker is **Shoonya** (Finvasia). All broker interactions go through
+> `tools/shoonya_instrument_fetch.py`, which uses the official
+> [`NorenRestApiPy`](https://github.com/Shoonya-Dev/ShoonyaApi-py) SDK.
+>
+> **OAuth is the only supported login flow** — the old TOTP auto-login
+> (`login(uid, password, twoFA, vendor_code, ...)`) is rejected by the live API
+> with `Invalid Vendor code`. The correct flow is:
+>
+> 1. Redirect to `https://api.shoonya.com/OAuthlogin/authorize/oauth?client_id=<CLIENT_ID>`
+> 2. Capture the `code` from the redirect URL
+> 3. Exchange it via `GenAcsTok` with
+>    `checksum = SHA256(client_id + secret_code + auth_code)`
+> 4. Use the returned `susertoken` as the `Authorization: Bearer` token
+>
+> The script handles steps 1–3 automatically (local redirect server on
+> `localhost:8080`) and step 4 via the SDK's `getAccessToken()`.
+>
+> **Endpoint paths matter.** The SDK ships with `NorenWClientTP/` but the live
+> API only accepts `NorenWClientAPI/`. The old path returns 502 Bad Gateway;
+> the documented path returns `400 Invalid Vendor code` for bad credentials
+> and `200 Ok` for good ones. Always verify against
+> [`shoonya.com/api-documentation`](https://shoonya.com/api-documentation)
+> before changing anything broker-related.
+>
+> **`searchscrip` is fuzzy.** It matches partial trading symbols, so `"SBIN"`
+> returns `SBINMID150-EQ` (token 761741) before `SBIN-EQ` (token 3045). The
+> script requires an exact `SYMBOL-EQ` match; see the match logic in
+> `tools/shoonya_instrument_fetch.py`.
+>
+> **Symbol masters.** Downloadable per exchange at
+> `https://api.shoonya.com/<EX>_symbols.txt.zip` (NSE, BSE, NFO, CDS, MCX,
+> BFO). These bypass login entirely and are useful for cross-checking tokens.
+>
+> **Universe note.** The original `TATAMOTORS` entry was replaced with
+> `TVSMOTOR-EQ` (token 8479) because no instrument named `TATAMOTORS` exists on
+> any Shoonya exchange symbol master. All 20 tokens are now resolved.
 
 ## Layout
 
