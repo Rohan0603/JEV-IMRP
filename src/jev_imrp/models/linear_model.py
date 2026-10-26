@@ -148,11 +148,13 @@ class LinearBaselinePolicy:
                 raise PolicyError(f"missing_feature:{feature}")
             try:
                 numeric_value = float(value)
+                if not numeric_value == numeric_value:  # NaN check
+                    raise PolicyError(f"invalid_feature:{feature}")
+                if not (numeric_value >= -1e6 and numeric_value <= 1e6):
+                    raise PolicyError(f"invalid_feature:{feature}")
+                features.append(numeric_value)
             except (TypeError, ValueError):
                 raise PolicyError(f"invalid_feature:{feature}")
-            if not numeric_value == numeric_value:  # NaN check
-                raise PolicyError(f"invalid_feature:{feature}")
-            features.append(numeric_value)
         return features
 
     def decide(self, candidate: CandidateRecord) -> PolicyDecision:
