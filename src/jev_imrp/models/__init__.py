@@ -53,6 +53,11 @@ from jev_imrp.models.policy import (
     config_digest,
     register_policy_trial,
 )
+from jev_imrp.models.linear_model import (
+    LINEAR_FEATURES,
+    LINEAR_POLICY_VERSION,
+    LinearBaselinePolicy,
+)
 from jev_imrp.models.random_filter import RANDOM_POLICY_VERSION, RandomPolicy
 from jev_imrp.models.rules import PRE_REGISTERED_RULES, RULES_VERSION, RulePolicy, RuleSpec
 
@@ -79,6 +84,9 @@ __all__: tuple[str, ...] = (
     "ParsedResponse",
     "Question",
     "RetryPolicy",
+    "LINEAR_FEATURES",
+    "LINEAR_POLICY_VERSION",
+    "LinearBaselinePolicy",
     "PRE_REGISTERED_RULES",
     "RANDOM_POLICY_VERSION",
     "RULES_VERSION",

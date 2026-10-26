@@ -32,10 +32,10 @@ models:
   moving_alias_note: "aliases may only be studied in a separate operational-drift experiment."
 
 request_policy:
-  prompt_version: null        # TBD - frozen before the holdout
-  question_id: null           # TBD
+  prompt_version: "jev_prompt_v1"    # frozen: prompt designed in training only, before holdout
+  question_id: "jev_accept"           # frozen: accept/reject question for primary study
   question_type: accept_reject
-  state_payload_canonical_form: null   # TBD - canonical state/payload plus its input hash
+  state_payload_canonical_form: "jev_state_v1_with_hash"   # frozen: canonical form plus input hash algorithm
   state_input_hash_algorithm: sha256
 
 batching:
@@ -49,9 +49,9 @@ batching:
 
 reliability:
   bounded_concurrency: true
-  max_concurrent_requests: null    # TBD - must be fixed before data inspection
-  rate_limit_rps: null            # TBD - must be fixed before data inspection
-  timeout_seconds: null           # TBD - must be fixed before data inspection (explicit client timeouts)
+  max_concurrent_requests: 4          # bounded concurrency for JEV API calls
+  rate_limit_rps: 0.1               # bounded: 1 request per 10 seconds
+  timeout_seconds: 30.0             # explicit client timeout (seconds)
   retry_status_codes: [429, 529]
   retry_backoff: "exponential with jitter, on 429 and 529 only"
   retry_other_failures: false
@@ -78,11 +78,60 @@ comparison:
   comparator: lightgbm_policy_frozen_by_validation_process
   fairness_constraints: config/experiments/baseline_v1.yaml#fairness_constraints
 
+models:
+  linear_baseline:
+    task: "binary_net_profitability"
+    preprocessing: fit_within_each_training_fold_only
+    hyperparameters:
+      C: 1.0
+      l1_ratio: 0.0
+      solver: "lbfgs"
+      max_iter: 1000
+      random_state: 0
+    description: "Logistic regression model for binary net profitability classification. Uses the same feature set as other baselines and adheres to fairness constraints."
+
+ladder:
+  - name: unfiltered
+    description: "Does the candidate strategy have any net opportunity at all?"
+  - name: matched_random
+    description: "Random accept at each model's coverage, matched within predeclared day/session strata"
+    draws: 100               # fixed: number of random draws for matched random filter
+    strata: [day, session]
+  - name: cost_aware_rule
+    description: "Reject candidates whose training-only expected gross opportunity is insufficient vs cost plus a preregistered safety margin"
+    safety_margin_bps: 10    # fixed: 10 bps safety margin for cost-aware rule
+  - name: fixed_rules
+    description: "Small pre-registered spread / volatility / time-of-day rule set; no large grid search"
+    rule_set_version: "v1"    # fixed: pre-registered rule set version
+  - name: linear_baseline
+    description: "Logistic regression model for binary net profitability classification"
+    preprocessing: fit_within_each_training_fold_only
+  - name: lightgbm
+    role: primary_comparator
+    task: "binary_net_profitability"   # fixed: binary classification task matching linear baseline
+    hyperparameter_ranges:
+      num_leaves: [31, 63]
+      learning_rate: [0.05, 0.1]
+      max_depth: [-1, 5, 10]
+      min_data_in_leaf: [20, 50]
+    max_training_size: 10000    # fixed: max training samples
+
 contamination:
   risk: "historical replay may predate the model release; memorisation cannot be excluded"
   mitigation: prefer prospective data captured after the model release
   limitation_note: "anonymised-symbol/date sensitivity may be reported, but does not prove contamination absent"
   primary_evidence: prospective_post_release_data
+
+scenarios:
+  - name: base
+    description: "Broker charges plus conservative executable side prices and the chosen latency convention."
+  - name: stress_1
+    description: "Spread/slippage assumption increased by a predeclared amount or factor."
+    increase_pct: 0.2             # frozen: 20% spread/slippage increase
+  - name: stress_2
+    description: "Greater latency and slippage, but the confirment should not fail."
+    latency_multiplier: 1.5     # frozen: 1.5x latency/slippage
+    unfilled_exit_rate: 0.05   # frozen: 5% unfilled/failed exit rate
 
 artifacts:
   trial_ledger: experiments/trial_ledger.csv
