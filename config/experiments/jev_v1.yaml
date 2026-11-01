@@ -30,6 +30,16 @@ models:
     than the requested one as a failure to be recorded, never silently accepted.
   moving_alias_allowed_in_confirmatory_replay: false
   moving_alias_note: "aliases may only be studied in a separate operational-drift experiment."
+  linear_baseline:
+    task: "binary_net_profitability"
+    preprocessing: fit_within_each_training_fold_only
+    hyperparameters:
+      C: 1.0
+      l1_ratio: 0.0
+      solver: "lbfgs"
+      max_iter: 1000
+      random_state: 0
+    description: "Logistic regression model for binary net profitability classification. Uses the same feature set as other baselines and adheres to fairness constraints."
 
 request_policy:
   prompt_version: "jev_prompt_v1"    # frozen: prompt designed in training only, before holdout
@@ -77,18 +87,6 @@ scoring:
 comparison:
   comparator: lightgbm_policy_frozen_by_validation_process
   fairness_constraints: config/experiments/baseline_v1.yaml#fairness_constraints
-
-models:
-  linear_baseline:
-    task: "binary_net_profitability"
-    preprocessing: fit_within_each_training_fold_only
-    hyperparameters:
-      C: 1.0
-      l1_ratio: 0.0
-      solver: "lbfgs"
-      max_iter: 1000
-      random_state: 0
-    description: "Logistic regression model for binary net profitability classification. Uses the same feature set as other baselines and adheres to fairness constraints."
 
 ladder:
   - name: unfiltered

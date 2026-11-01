@@ -7,7 +7,7 @@ owner: research
 mode: research_only
 
 candidates:
-  strategy_version: null       # TBD - candidate-signal generator version must be fixed before data inspection
+  strategy_version: "synthetic_v1"   # fixed: synthetic signal generator version
   side_source: candidate_generator   # direction is decided upstream, never by the filter
   decision: accept_reject_only
 
@@ -16,22 +16,26 @@ ladder:                        # run in this order (plan 9.1)
     description: "Does the candidate strategy have any net opportunity at all?"
   - name: matched_random
     description: "Random accept at each model's coverage, matched within predeclared day/session strata"
-    draws: null               # TBD - must be fixed before data inspection
+    draws: 100               # fixed: number of random draws for matched random filter
     strata: [day, session]
   - name: cost_aware_rule
     description: "Reject candidates whose training-only expected gross opportunity is insufficient vs cost plus a preregistered safety margin"
-    safety_margin_bps: null   # TBD - must be fixed before data inspection
+    safety_margin_bps: 10    # fixed: 10 bps safety margin for cost-aware rule
   - name: fixed_rules
     description: "Small pre-registered spread / volatility / time-of-day rule set; no large grid search"
-    rule_set_version: null    # TBD - must be fixed before data inspection
+    rule_set_version: "v1"    # fixed: pre-registered rule set version
   - name: linear_baseline
-    task: null                # TBD - binary net-profitability classification or continuous net-return regression
+    task: "binary_net_profitability"   # fixed: binary classification task
     preprocessing: fit_within_each_training_fold_only
   - name: lightgbm
     role: primary_comparator
-    task: null                # TBD - must match the chosen task
-    hyperparameter_ranges: null   # TBD - small preregistered range, limited tuning
-    max_training_size: null
+    task: "binary_net_profitability"   # fixed: binary classification task matching linear baseline
+    hyperparameter_ranges:
+      num_leaves: [31, 63]
+      learning_rate: [0.05, 0.1]
+      max_depth: [-1, 5, 10]
+      min_data_in_leaf: [20, 50]
+    max_training_size: 10000    # fixed: max training samples
 
 fairness_constraints:          # plan 9.2 - identical for every contestant
   shared_candidate_set: true

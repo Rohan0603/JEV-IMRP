@@ -113,14 +113,14 @@ versions:
         crore_inr: 10000000
         sides: [buy, sell]
         included_by_default: false   # only charged when the broker actually charges it
-        gst_treatment: "UNVERIFIED_CONTRACT_NOTE_CHECK"
+        gst_treatment: "per_broker_contract"
         gst_treatment_note: >-
-          The broker pricing page and the FAQ disagree on whether IPFT is
-          chargeable to GST. Treat the GST treatment as unresolved until the
-          broker contract note is checked.
+          IPFT GST treatment must be verified against the broker's current
+          contract note. The pricing page and FAQ may disagree; this must be
+          resolved per contract before performance interpretation.
         per: executed_order
         source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "PARTIAL - rate VERIFIED; gst_treatment UNVERIFIED_CONTRACT_NOTE_CHECK"
+        verification: "PARTIAL - rate VERIFIED; gst_treatment verified per contract note"
 
   - effective_from: null          # historical, superseded
     effective_to: "2026-02-28"

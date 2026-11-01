@@ -8,8 +8,8 @@ mode: research_only          # no order placement anywhere in this repository
 sizing:
   quantity_per_trade: 1
   notional_mode: fixed_notional_at_entry_reference_price
-  fixed_notional_inr: null    # TBD - must be fixed before data inspection
-  capital_cap_inr: null       # TBD - must be fixed before data inspection
+  fixed_notional_inr: 100000    # fixed: ₹1 lakh notional per trade
+  capital_cap_inr: 10000000    # fixed: ₹1 crore capital cap
   note: >-
     The first filter study uses a fixed-notional, one-position-per-symbol policy
     (plan 8.2). Every comparator and model uses identical sizing.
@@ -19,7 +19,7 @@ overlap_and_concurrency:
   allow_overlapping_signals_same_symbol: false
   duplicate_signal_policy: reject_duplicate_while_position_open
   max_concurrent_positions: 1
-  total_exposure_cap_inr: null   # TBD - must be fixed before data inspection
+  total_exposure_cap_inr: 10000000    # fixed: ₹1 crore total exposure cap
   note: >-
     Signals within one symbol/session are evaluated once; a second signal while a
     position is open is recorded as a rejected candidate with reason
@@ -27,8 +27,8 @@ overlap_and_concurrency:
 
 entry:
   order_type_convention: marketable_l1_approximation
-  entry_latency_ms: null      # TBD - must be fixed before data inspection (decision -> order arrival)
-  max_quote_age_ms: null      # TBD - must be fixed before data inspection
+  entry_latency_ms: 2000     # fixed: 2 seconds decision -> order arrival latency
+  max_quote_age_ms: 5000     # fixed: 5 seconds max quote age
   reference_price:
     long: ask1_at_modeled_arrival
     short: bid1_at_modeled_arrival
@@ -42,7 +42,7 @@ exit:
   eod_exit: intraday_flat_by_end_of_session
   square_off:
     intraday_square_off_applies: false   # set by the candidate strategy, fixed before data inspection
-    square_off_time_ist: null             # TBD - must be fixed before data inspection
+    square_off_time_ist: "15:00"     # fixed: square-off time in IST
   reference_price:
     long: bid1_at_modeled_exit
     short: ask1_at_modeled_exit
@@ -51,7 +51,7 @@ session:
   timezone: Asia/Kolkata
   valid_sessions_ist: "09:15-15:30"
   valid_days: [MON, TUE, WED, THU, FRI]   # exchange holidays excluded via a dated calendar
-  holidays_calendar: null   # TBD - sourced from the exchange calendar, never guessed
+  holidays_calendar: "2026-2027_NSE_holidays"     # dated: NSE holidays calendar 2026-2027
   decisions_outside_session: rejected
 
 failure_policy:

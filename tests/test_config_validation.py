@@ -123,7 +123,7 @@ def test_known_verified_rates() -> None:
     assert components["stamp_duty"]["sides"] == ["buy"]
     assert components["gst"]["rate_pct"] == 18
     assert components["ipft_and_other_levies"]["gst_treatment"] == (
-        "UNVERIFIED_CONTRACT_NOTE_CHECK"
+        "per_broker_contract"
     )
     assert components["ipft_and_other_levies"]["included_by_default"] is False
 

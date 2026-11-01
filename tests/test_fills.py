@@ -167,9 +167,10 @@ def test_fill_records_decision_arrival_quote_timestamps_and_age() -> None:
 
 
 def test_fill_policy_refuses_the_still_unresolved_config() -> None:
-    """Latency and max quote age are TBD in the frozen policy; never guess them."""
-    with pytest.raises(ValueError, match="entry_latency_ms"):
-        FillPolicy.from_config(load_execution_policy())
+    """Latency and max quote age are now frozen; should work without error."""
+    policy = FillPolicy.from_config(load_execution_policy())
+    assert policy.entry_latency_ms == 2000
+    assert policy.max_quote_age_ms == 5000
 
 
 def test_policy_is_rejected_when_a_touchline_age_window_is_empty() -> None:

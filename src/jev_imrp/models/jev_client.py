@@ -112,13 +112,18 @@ class MissingCredentialsError(JevError):
 
 @dataclass(frozen=True)
 class Question:
-    """One named question, versioned as a unit with its content hash."""
+    """One named question, versioned as a unit with its content hash.
+
+    ``criteria`` is a mapping of criterion name -> description. The live API
+    contract (docs.typesafe.ai) requires ``criteria`` to be a *dictionary* for
+    ``choice`` questions; a list of strings is rejected with HTTP 422.
+    """
 
     id: str
     type: str
     instructions: str
     choices: tuple[str, ...] = ()
-    criteria: tuple[str, ...] = ()
+    criteria: dict[str, str] = field(default_factory=dict)
     prompt_version: str = "prompt_v0"
 
     def __post_init__(self) -> None:
@@ -138,7 +143,7 @@ class Question:
                 "type": self.type,
                 "instructions": self.instructions,
                 "choices": list(self.choices),
-                "criteria": list(self.criteria),
+                "criteria": dict(self.criteria),
                 "prompt_version": self.prompt_version,
             }
         )
@@ -149,7 +154,7 @@ class Question:
         if self.choices:
             body["choices"] = list(self.choices)
         if self.criteria:
-            body["criteria"] = list(self.criteria)
+            body["criteria"] = dict(self.criteria)
         return body
 
     def to_record(self) -> dict[str, Any]:
@@ -158,7 +163,7 @@ class Question:
             "question_type": self.type,
             "instructions": self.instructions,
             "choices": list(self.choices),
-            "criteria": list(self.criteria),
+            "criteria": dict(self.criteria),
             "prompt_version": self.prompt_version,
             "prompt_content_hash": self.content_hash,
         }
@@ -190,11 +195,13 @@ def accept_reject_question(
             "probability that the trade will be profitable."
         ),
         choices=("accept", "reject"),
-        criteria=(
-            "Is the point-in-time setup tradable rather than noise?",
-            "Is the expected edge plausible after the declared round-trip cost?",
-            "Is the quote and liquidity context fresh enough to act on?",
-        ),
+        criteria={
+            "accept": "The point-in-time setup is tradable rather than noise, the expected "
+            "edge is plausible after the declared round-trip cost, and the quote and "
+            "liquidity context is fresh enough to act on.",
+            "reject": "The setup is noise, the expected edge is not plausible after costs, "
+            "or the quote/liquidity context is too stale to act on.",
+        },
         prompt_version=prompt_version,
     )
 

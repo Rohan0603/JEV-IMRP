@@ -16,7 +16,7 @@ frozen:
   cost_schedule_config: config/cost_schedule.yaml
   execution_policy_config: config/execution_policy.yaml
   feature_config: config/feature_config.yaml
-  candidate_signal_generator_version: null   # TBD - must be fixed before data inspection
+  candidate_signal_generator_version: "synthetic_v1"   # fixed: synthetic signal generator for initial experiment
   primary_comparator: lightgbm_policy_frozen_by_validation_process
   comparator_fallback_rule: >-
     Declared in advance: if LightGBM cannot be trained on the primary task, the
@@ -25,15 +25,15 @@ frozen:
   primary_metric: paired_daily_portfolio_net_pnl_difference
   cost_scenarios: [base, stress_1, stress_2]
 
-  delta_min: null            # TBD - must be fixed before data inspection
-  alpha: null                 # TBD - must be fixed before data inspection
-  power_target: null          # TBD - must be fixed before data inspection
-  test_sidedness: null        # TBD - must be fixed before data inspection (one- vs two-sided)
+  delta_min: 0.0001           # fixed: minimum economically meaningful effect (10 bps)
+  alpha: 0.05                  # fixed: significance level (5%)
+  power_target: 0.8            # fixed: statistical power target (80%)
+  test_sidedness: "two_sided"  # fixed: two-sided hypothesis test
 
 holdout:
   locked: true
-  boundary_dates: null        # TBD - set once the prospective session count is known
-  embargo_sessions: null      # TBD - must be justified by horizon/dependency structure
+  boundary_dates: ["2027-01-01", "2027-03-31"]  # fixed: training/validation/test period
+  embargo_sessions: 1         # fixed: one-session embargo for 30-minute horizon
   purge_rule: "remove training rows whose label interval overlaps or reaches into the test interval"
   opening_conditions:
     - all data, label and cost gates in plan sections 11.1 and 11.2 pass
@@ -45,4 +45,4 @@ holdout:
     prospective period is required for confirmation (plan 10.2).
 
 trial_ledger: experiments/trial_ledger.csv
-max_trials: null              # TBD - must be fixed before data inspection
+max_trials: 1000              # fixed: maximum number of trials

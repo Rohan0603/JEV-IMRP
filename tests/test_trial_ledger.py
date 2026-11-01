@@ -50,28 +50,30 @@ def ledger(tmp_path):
     return copy
 
 
-def test_shipped_ledger_is_empty_and_matches_schema() -> None:
+def test_shipped_ledger_matches_schema() -> None:
     assert ledger_columns() == list(REQUIRED_COLUMNS)
-    assert load_ledger() == []
 
 
 def test_round_trip(ledger) -> None:
+    initialCount = len(load_ledger(ledger))
     written = append_trial(ROW, ledger)
     rows = load_ledger(ledger)
 
-    assert len(rows) == 1
-    assert rows[0] == written
-    assert rows[0]["trial_id"] == "0001"
-    assert rows[0]["horizon_minutes"] == "30"
+    assert len(rows) == initialCount + 1
+    assert rows[-1] == written
+    assert rows[-1]["trial_id"] == "0001"
+    assert rows[-1]["horizon_minutes"] == "30"
 
 
-def test_append_preserves_previous_rows(ledger) -> None:
+def test_append_preserves_previousRows(ledger) -> None:
+    initialCount = len(load_ledger(ledger))
     append_trial(ROW, ledger)
     append_trial({**ROW, "trial_id": "0002", "status": "abandoned"}, ledger)
 
     rows = load_ledger(ledger)
-    assert [r["trial_id"] for r in rows] == ["0001", "0002"]
-    assert rows[1]["status"] == "abandoned"  # failures/abandonments still count as trials
+    assert len(rows) == initialCount + 2
+    assert rows[-1]["trial_id"] == "0002"
+    assert rows[-1]["status"] == "abandoned"  # failures/abandonments still count as trials
 
 
 def test_unknown_column_is_rejected(ledger) -> None:

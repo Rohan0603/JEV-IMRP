@@ -16,6 +16,15 @@ from jev_imrp.ingest.raw_event import (
     new_event_id,
 )
 from jev_imrp.ingest.shoonya_recorder import Recorder
+from jev_imrp.ingest.symbol_resolver import (
+    ResolvedToken,
+    SymbolResolutionError,
+    resolve_symbol,
+    resolve_symbols_batch,
+    resolve_via_master,
+    resolve_via_searchscrip,
+)
+from jev_imrp.ingest.historical_data_client import fetch_tp_series_data, fetch_eod_chart_data, HistoricalDataError
 
 __all__ = [
     "RAW_EVENT_SCHEMA",
@@ -24,8 +33,17 @@ __all__ = [
     "RawEvent",
     "RawEventWriter",
     "Recorder",
+    "ResolvedToken",
+    "SymbolResolutionError",
     "empty_table",
     "new_event_id",
     "read_manifest",
+    "resolve_symbol",
+    "resolve_symbols_batch",
+    "resolve_via_master",
+    "resolve_via_searchscrip",
     "verify_manifest",
+    "fetch_tp_series_data",
+    "fetch_eod_chart_data",
+    "HistoricalDataError",
 ]

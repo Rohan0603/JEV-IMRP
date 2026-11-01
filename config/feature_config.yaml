@@ -29,21 +29,21 @@ features:
     unit: _pct
     definition_ref: "section 7.2: ATR over COMPLETED bars only, divided by price"
     availability_rule: "completed bars only; lookback and indicator definition frozen here"
-    lookback_bars: null       # TBD - must be frozen before data inspection
+    lookback_bars: 14         # frozen: ATR lookback matches feature_definitions.py constant
     priority: medium
 
   - name: relative_volume
     unit: ratio
     definition_ref: "section 7.2: current information vs a point-in-time intraday/time-of-day reference"
     availability_rule: "never uses final session volume"
-    reference_window: null    # TBD - must be frozen before data inspection
+    reference_window: 5         # frozen: prior sessions for relative volume reference
     priority: medium
 
   - name: dist_vwap_pct
     unit: _pct
     definition_ref: "section 7.2: VWAP from only the accumulated trades/volume available by decision time"
     availability_rule: "session-reset rule must be frozen here"
-    vwap_reset: null          # TBD - must be frozen before data inspection
+    vwap_reset: "ist_session_date"     # frozen: VWAP resets at IST session boundary
     priority: medium
 
   - name: dist_pdh_pdl_pct
@@ -56,21 +56,21 @@ features:
     unit: index
     definition_ref: "section 7.2: latest published India VIX value available by the signal timestamp"
     availability_rule: "point-in-time publication time; staleness limit must be frozen here"
-    max_staleness_seconds: null   # TBD - must be frozen before data inspection
+    max_staleness_seconds: 900     # frozen: India VIX staleness limit (5 min)
     priority: medium
 
   - name: nifty_returns_trend
     unit: _pct
     definition_ref: "section 7.2: causal multi-horizon Nifty returns and volatility"
     availability_rule: "point-in-time only; thresholds, if categorical, frozen on training data"
-    horizons_minutes: null    # TBD - must be frozen before data inspection
+    horizons_minutes: [1, 5, 15]     # frozen: multi-horizon Nifty returns
     priority: medium
 
   - name: time_of_day_minutes_since_open
     unit: minutes
     definition_ref: "section 7.2: minutes since session open, cyclical encoding or predeclared buckets"
     availability_rule: "causal; derived from the exchange session calendar"
-    encoding: null            # TBD - cyclical or bucket definition must be frozen before data inspection
+    encoding: "cyclical"            # frozen: cyclical encoding of time-of-day
     priority: medium
 
   - name: event_flags

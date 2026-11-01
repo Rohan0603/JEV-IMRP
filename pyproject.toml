@@ -18,6 +18,7 @@ dependencies = [
     "lightgbm==4.7.0",        # plan 4.2: nonlinear tabular challenger (primary comparator)
     "httpx==0.28.1",          # plan 4.2: TypeSafe API calls (unused until Sprint 7)
     "pyyaml==6.0.3",          # configuration files
+    "websockets==17.3",       # Shoonya WebSocket feed client
 ]
 
 [project.optional-dependencies]
