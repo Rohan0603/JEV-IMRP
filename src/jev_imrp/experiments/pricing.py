@@ -220,6 +220,16 @@ def aggregate_cost(
 ) -> CostReport:
     """Aggregate terminal attempts without per-attempt display rounding."""
     terminal, unique_count, duplicate_count = _terminal_attempts(attempts)
+    aggregate_input_tokens = (
+        sum(item.input_tokens for item in terminal)
+        if terminal and all(_valid_tokens(item.input_tokens) for item in terminal)
+        else None
+    )
+    aggregate_output_tokens = (
+        sum(item.output_tokens for item in terminal)
+        if terminal and all(_valid_tokens(item.output_tokens) for item in terminal)
+        else None
+    )
     if not terminal:
         estimate = CostEstimate(
             Decimal("0"),
@@ -230,8 +240,8 @@ def aggregate_cost(
             "no_attempts",
             "",
             _canonical_route(route),
-            None,
-            None,
+            aggregate_input_tokens,
+            aggregate_output_tokens,
             Decimal("0"),
             False,
             snapshot,
@@ -241,7 +251,23 @@ def aggregate_cost(
             estimate_attempt_cost(item, route=route, snapshot=snapshot) for item in terminal
         ]
         modes = {item.mode for item in estimates}
-        if modes == {"mocked"}:
+        if len(modes) > 1:
+            estimate = CostEstimate(
+                None,
+                None,
+                CostStatus.UNKNOWN,
+                "mixed_execution_modes",
+                "mixed",
+                "mixed_execution_modes",
+                snapshot.model_id,
+                snapshot.route,
+                aggregate_input_tokens,
+                aggregate_output_tokens,
+                None,
+                any(item.missing_output_usage for item in estimates),
+                snapshot,
+            )
+        elif modes == {"mocked"}:
             estimate = CostEstimate(
                 Decimal("0"),
                 "0.00000000",
@@ -251,8 +277,8 @@ def aggregate_cost(
                 "mocked_local_spend",
                 snapshot.model_id,
                 snapshot.route,
-                None,
-                None,
+                aggregate_input_tokens,
+                aggregate_output_tokens,
                 Decimal("0"),
                 False,
                 snapshot,
@@ -268,8 +294,8 @@ def aggregate_cost(
                 first_unknown.mode_label,
                 first_unknown.model_id,
                 first_unknown.route,
-                None,
-                None,
+                aggregate_input_tokens,
+                aggregate_output_tokens,
                 None,
                 any(item.missing_output_usage for item in estimates),
                 snapshot,
@@ -285,8 +311,8 @@ def aggregate_cost(
                 "hypothetical_direct_provider_estimate",
                 snapshot.model_id,
                 snapshot.route,
-                None,
-                None,
+                aggregate_input_tokens,
+                aggregate_output_tokens,
                 Decimal("0"),
                 any(item.missing_output_usage for item in estimates),
                 snapshot,

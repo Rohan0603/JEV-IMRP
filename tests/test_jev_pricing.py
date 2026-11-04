@@ -152,9 +152,33 @@ def test_mode_report_keeps_mode_labels_separate() -> None:
     assert reports["mocked"].mode_label == "mocked_local_spend"
 
 
-def test_retry_failures_keep_uncertain_outcome_unknown() -> None:
-    report = aggregate_cost([attempt(input_tokens=None, failure_reason="timeout", http_status=529)])
+@pytest.mark.parametrize("http_status", [429, 529])
+def test_retry_failures_keep_uncertain_outcome_unknown(http_status: int) -> None:
+    report = aggregate_cost(
+        [attempt(input_tokens=None, failure_reason="timeout", http_status=http_status)]
+    )
 
     assert report.status is CostStatus.UNKNOWN
     assert report.estimated_usd is None
     assert report.reason == "upstream_outcome_uncertain"
+
+
+def test_aggregate_persists_token_totals() -> None:
+    report = aggregate_cost(
+        [
+            attempt(attempt_id="exp:a:a00", candidate_id="a", input_tokens=1_000, output_tokens=2),
+            attempt(attempt_id="exp:b:a00", candidate_id="b", input_tokens=2_000, output_tokens=3),
+        ]
+    )
+
+    assert report.input_tokens == 3_000
+    assert report.output_tokens == 5
+
+
+def test_aggregate_rejects_mixed_execution_modes() -> None:
+    report = aggregate_cost(
+        [attempt(), attempt(attempt_id="exp:mock:a00", candidate_id="mock", mode="mocked")]
+    )
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.reason == "mixed_execution_modes"
