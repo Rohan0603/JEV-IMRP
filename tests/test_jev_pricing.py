@@ -1,0 +1,160 @@
+from __future__ import annotations
+
+from dataclasses import replace
+from decimal import Decimal
+
+import pytest
+
+from jev_imrp.experiments.pricing import (
+    CostStatus,
+    aggregate_cost,
+    estimate_attempt_cost,
+    report_costs_by_mode,
+)
+from jev_imrp.models.jev_client import CONFIRMATORY_MODEL_ID, Attempt
+
+
+def attempt(
+    *,
+    attempt_id: str = "exp:candidate:a00",
+    candidate_id: str = "candidate",
+    mode: str = "live",
+    retry_count: int = 0,
+    input_tokens: int | None = 1_000_000,
+    output_tokens: int | None = 10,
+    failure_reason: str | None = None,
+    model_id: str = CONFIRMATORY_MODEL_ID,
+    http_status: int | None = None,
+) -> Attempt:
+    return Attempt(
+        attempt_id=attempt_id,
+        experiment_id="exp",
+        candidate_id=candidate_id,
+        execution_mode=mode,  # type: ignore[arg-type]
+        requested_model_id=model_id,
+        payload_hash="hash",
+        prompt_version="prompt-v1",
+        prompt_hash="prompt-hash",
+        question_ids=("q",),
+        attempted_at_utc="2026-11-05T00:00:00+00:00",
+        retry_count=retry_count,
+        returned_model_id=model_id,
+        http_status=http_status
+        if http_status is not None
+        else (200 if failure_reason is None else 529),
+        failure_reason=failure_reason,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+
+
+def test_one_million_input_tokens_costs_042_usd_and_output_is_free() -> None:
+    estimate = estimate_attempt_cost(attempt())
+
+    assert estimate.status is CostStatus.ESTIMATED
+    assert estimate.estimated_usd == Decimal("0.042")
+    assert estimate.display_usd == "0.04200000"
+    assert estimate.output_cost_usd == Decimal("0")
+
+
+def test_small_input_uses_decimal_unit_conversion() -> None:
+    estimate = estimate_attempt_cost(attempt(input_tokens=1_000, output_tokens=50_000))
+
+    assert estimate.estimated_usd == Decimal("0.000042")
+    assert estimate.display_usd == "0.00004200"
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    [None, -1, True, "1000"],
+)
+def test_missing_or_malformed_input_usage_is_unknown(tokens: object) -> None:
+    estimate = estimate_attempt_cost(attempt(input_tokens=tokens))  # type: ignore[arg-type]
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.estimated_usd is None
+    assert estimate.reason == "input_usage_missing_or_invalid"
+
+
+def test_missing_output_usage_is_allowed_when_input_is_valid() -> None:
+    estimate = estimate_attempt_cost(attempt(output_tokens=None))
+
+    assert estimate.status is CostStatus.ESTIMATED
+    assert estimate.estimated_usd == Decimal("0.042")
+    assert estimate.missing_output_usage is True
+
+
+def test_mocked_run_is_labeled_local_zero_not_provider_billing() -> None:
+    estimate = estimate_attempt_cost(attempt(mode="mocked", input_tokens=1_000_000))
+
+    assert estimate.status is CostStatus.MOCKED_LOCAL_ZERO
+    assert estimate.estimated_usd == Decimal("0")
+    assert estimate.display_usd == "0.00000000"
+    assert estimate.mode_label == "mocked_local_spend"
+
+
+@pytest.mark.parametrize("model_id", ["jev-other", "jev-latest"])
+def test_unknown_model_is_not_priced(model_id: str) -> None:
+    estimate = estimate_attempt_cost(attempt(model_id=model_id))
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.reason == "unknown_model"
+
+
+def test_unknown_route_is_not_priced() -> None:
+    estimate = estimate_attempt_cost(attempt(), route="https://example.invalid/jev")
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.reason == "unknown_route"
+
+
+def test_retry_and_duplicate_attempts_are_counted_once() -> None:
+    first = attempt(
+        attempt_id="exp:candidate:a00",
+        retry_count=0,
+        input_tokens=None,
+        failure_reason="http_error",
+    )
+    terminal = attempt(attempt_id="exp:candidate:a01", retry_count=1, input_tokens=1_000_000)
+    duplicate = replace(terminal)
+
+    report = aggregate_cost([first, terminal, duplicate])
+
+    assert report.status is CostStatus.ESTIMATED
+    assert report.estimated_usd == Decimal("0.042")
+    assert report.attempts_counted == 1
+    assert report.duplicate_attempts == 1
+
+
+def test_aggregate_before_display_rounding() -> None:
+    report = aggregate_cost(
+        [
+            attempt(attempt_id="exp:a:a00", candidate_id="a", input_tokens=1),
+            attempt(attempt_id="exp:b:a00", candidate_id="b", input_tokens=1),
+        ]
+    )
+
+    assert report.estimated_usd == Decimal("0.000000084")
+    assert report.display_usd == "0.00000008"
+
+
+def test_mode_report_keeps_mode_labels_separate() -> None:
+    reports = report_costs_by_mode(
+        [
+            attempt(mode="live"),
+            attempt(attempt_id="exp:mock:a00", candidate_id="mock", mode="mocked"),
+        ]
+    )
+
+    assert reports["live"].status is CostStatus.ESTIMATED
+    assert reports["live"].mode_label == "hypothetical_direct_provider_estimate"
+    assert reports["mocked"].status is CostStatus.MOCKED_LOCAL_ZERO
+    assert reports["mocked"].mode_label == "mocked_local_spend"
+
+
+def test_retry_failures_keep_uncertain_outcome_unknown() -> None:
+    report = aggregate_cost([attempt(input_tokens=None, failure_reason="timeout", http_status=529)])
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.estimated_usd is None
+    assert report.reason == "upstream_outcome_uncertain"
