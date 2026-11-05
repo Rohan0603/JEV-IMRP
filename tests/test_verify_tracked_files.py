@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -73,4 +74,34 @@ def test_rejects_tracked_directory_path(tmp_path: Path) -> None:
     tracked.mkdir()
 
     with pytest.raises(UnsafeTrackedPathError, match="non-regular"):
+        tracked_file_hashes(repo)
+
+
+def test_rejects_open_permission_failure(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    tracked = repo / "tracked.txt"
+    tracked.write_text("present", encoding="utf-8")
+    git(repo, "add", "tracked.txt")
+
+    with (
+        patch.object(_MODULE.os, "open", side_effect=PermissionError("denied")),
+        pytest.raises(UnsafeTrackedPathError, match="safely open"),
+    ):
+        tracked_file_hashes(repo)
+
+
+def test_rejects_file_swap_detected_after_read(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    tracked = repo / "tracked.txt"
+    replacement = repo / "replacement.txt"
+    tracked.write_text("present", encoding="utf-8")
+    replacement.write_text("replacement", encoding="utf-8")
+    git(repo, "add", "tracked.txt")
+    before = tracked.lstat()
+    after = replacement.lstat()
+
+    with (
+        patch.object(_MODULE.Path, "lstat", side_effect=[before, after]),
+        pytest.raises(UnsafeTrackedPathError, match="changed during read"),
+    ):
         tracked_file_hashes(repo)
