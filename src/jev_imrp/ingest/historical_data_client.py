@@ -6,17 +6,13 @@ using the Shoonya API endpoints `TPSeries` and `EODChartData`.
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from jev_imrp.ingest.symbol_resolver import _get_credentials, _form_request, _parse_response
+from jev_imrp.ingest.symbol_resolver import _form_request, _get_credentials, _parse_response
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +22,10 @@ REST_BASE = "https://api.shoonya.com/NorenWClientAPI/"
 
 class HistoricalDataError(Exception):
     """Raised when historical data cannot be fetched."""
-    pass
 
 
 class HistoricalDataFetchError(Exception):
     """Raised when historical data fetch fails after retries."""
-    pass
 
 
 MAX_RETRIES = 3
@@ -39,8 +33,8 @@ BASE_BACKOFF_SECONDS = 1.0
 
 
 def _fetch_historical_data(
-    endpoint: str, payload: Dict[str, str], access_token: str,
-) -> Tuple[Dict[str, Any], bool]:
+    endpoint: str, payload: dict[str, str], access_token: str
+) -> tuple[dict[str, Any], bool]:
     """Fetch historical data from Shoonya API with retry logic.
 
     Args:
@@ -66,7 +60,7 @@ def _fetch_historical_data(
             if attempt < MAX_RETRIES - 1:
                 # Check if this is a retryable error (rate limited, timeout, etc.)
                 if exc.code in (429, 500, 502, 503, 504):
-                    backoff = BASE_BACKOFF_SECONDS * (2 ** attempt)
+                    backoff = BASE_BACKOFF_SECONDS * (2**attempt)
                     logger.warning(
                         f"Retryable HTTP error {exc.code} fetching {endpoint}, "
                         f"retrying in {backoff}s (attempt {attempt + 1}/{MAX_RETRIES})"
@@ -75,9 +69,9 @@ def _fetch_historical_data(
                     continue
                 raise HistoricalDataError(f"HTTP error fetching {endpoint}: {exc}") from exc
             raise HistoricalDataError(f"HTTP error fetching {endpoint}: {exc}") from exc
-        except urllib.request.URLError as exc:
+        except urllib.error.URLError as exc:
             if attempt < MAX_RETRIES - 1:
-                backoff = BASE_BACKOFF_SECONDS * (2 ** attempt)
+                backoff = BASE_BACKOFF_SECONDS * (2**attempt)
                 logger.warning(
                     f"Retryable URL error fetching {endpoint}, "
                     f"retrying in {backoff}s (attempt {attempt + 1}/{MAX_RETRIES})"
@@ -95,8 +89,8 @@ def fetch_tp_series_data(
     from_date: str,
     to_date: str,
     interval: str = "1m",
-    user_id: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    user_id: str | None = None,
+) -> list[dict[str, Any]]:
     """Fetch intraday candles (TPSeries) from Shoonya API.
 
     Args:
@@ -115,7 +109,7 @@ def fetch_tp_series_data(
     """
     _, _, access_token = _get_credentials()
 
-    all_data: List[Dict[str, Any]] = []
+    all_data: list[dict[str, Any]] = []
     payload = {
         "uid": user_id or "",
         "exch": exchange,
@@ -131,17 +125,13 @@ def fetch_tp_series_data(
         while page_count < max_pages:
             data, has_more = _fetch_historical_data("TPSeries", payload, access_token)
 
-            # Handle both list and dict response formats
-            if isinstance(data, list):
-                all_data.extend(data)
-            elif isinstance(data, dict):
-                candles = data.get("data", [])
-                if isinstance(candles, list):
-                    all_data.extend(candles)
-                else:
-                    logger.warning(f"Unexpected 'data' field type in TPSeries response: {type(candles).__name__}")
+            candles = data.get("data", [])
+            if isinstance(candles, list):
+                all_data.extend(item for item in candles if isinstance(item, dict))
             else:
-                logger.warning(f"Unexpected TPSeries response type: {type(data).__name__}")
+                logger.warning(
+                    f"Unexpected 'data' field type in TPSeries response: {type(candles).__name__}"
+                )
 
             page_count += 1
 
@@ -160,8 +150,8 @@ def fetch_eod_chart_data(
     symbol: str,
     from_date: str,
     to_date: str,
-    user_id: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    user_id: str | None = None,
+) -> list[dict[str, Any]]:
     """Fetch daily EOD candles (EODChartData) from Shoonya API.
 
     Args:
@@ -179,7 +169,7 @@ def fetch_eod_chart_data(
     """
     _, _, access_token = _get_credentials()
 
-    all_data: List[Dict[str, Any]] = []
+    all_data: list[dict[str, Any]] = []
     payload = {
         "uid": user_id or "",
         "exch": exchange,
@@ -194,17 +184,14 @@ def fetch_eod_chart_data(
         while page_count < max_pages:
             data, has_more = _fetch_historical_data("EODChartData", payload, access_token)
 
-            # Handle both list and dict response formats
-            if isinstance(data, list):
-                all_data.extend(data)
-            elif isinstance(data, dict):
-                candles = data.get("data", [])
-                if isinstance(candles, list):
-                    all_data.extend(candles)
-                else:
-                    logger.warning(f"Unexpected 'data' field type in EODChartData response: {type(candles).__name__}")
+            candles = data.get("data", [])
+            if isinstance(candles, list):
+                all_data.extend(item for item in candles if isinstance(item, dict))
             else:
-                logger.warning(f"Unexpected EODChartData response type: {type(data).__name__}")
+                logger.warning(
+                    "Unexpected 'data' field type in EODChartData response: "
+                    f"{type(candles).__name__}"
+                )
 
             page_count += 1
 
@@ -219,8 +206,8 @@ def fetch_eod_chart_data(
 
 
 __all__ = [
-    "fetch_tp_series_data",
-    "fetch_eod_chart_data",
     "HistoricalDataError",
     "HistoricalDataFetchError",
+    "fetch_eod_chart_data",
+    "fetch_tp_series_data",
 ]
