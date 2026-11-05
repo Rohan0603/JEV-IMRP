@@ -203,6 +203,23 @@ def test_aggregate_rejects_mixed_execution_modes() -> None:
     assert report.reason == "mixed_execution_modes"
 
 
+def test_empty_live_report_is_not_labeled_mocked_zero() -> None:
+    report = aggregate_cost([], execution_mode="live")
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.estimated_usd is None
+    assert report.mode == "live"
+    assert report.mode_label == "hypothetical_direct_provider_estimate"
+
+
+def test_empty_mocked_report_is_labeled_mocked_zero() -> None:
+    report = aggregate_cost([], execution_mode="mocked")
+
+    assert report.status is CostStatus.MOCKED_LOCAL_ZERO
+    assert report.estimated_usd == Decimal("0")
+    assert report.mode == "mocked"
+
+
 def test_cost_record_persists_pricing_snapshot_metadata() -> None:
     record = aggregate_cost([attempt(input_tokens=1_000)]).to_record()
 

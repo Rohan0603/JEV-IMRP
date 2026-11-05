@@ -239,6 +239,7 @@ def aggregate_cost(
     *,
     route: str = JEV_ROUTE,
     snapshot: PricingSnapshot = DEFAULT_PRICING_SNAPSHOT,
+    execution_mode: str | None = None,
 ) -> CostReport:
     """Aggregate terminal attempts without per-attempt display rounding."""
     terminal, unique_count, duplicate_count, candidate_terminal_count = _terminal_attempts(attempts)
@@ -262,21 +263,41 @@ def aggregate_cost(
         else:
             aggregate_output_tokens = sum(output_values)
     if not terminal:
-        estimate = CostEstimate(
-            Decimal("0"),
-            "0.00000000",
-            CostStatus.MOCKED_LOCAL_ZERO,
-            "no_attempts",
-            "unknown",
-            "no_attempts",
-            "",
-            _canonical_route(route),
-            aggregate_input_tokens,
-            aggregate_output_tokens,
-            Decimal("0"),
-            False,
-            snapshot,
-        )
+        if execution_mode == "mocked":
+            estimate = CostEstimate(
+                Decimal("0"),
+                "0.00000000",
+                CostStatus.MOCKED_LOCAL_ZERO,
+                "no_attempts",
+                "mocked",
+                "mocked_local_spend",
+                "",
+                _safe_route_label(_canonical_route(route)),
+                aggregate_input_tokens,
+                aggregate_output_tokens,
+                Decimal("0"),
+                False,
+                snapshot,
+            )
+        else:
+            mode = execution_mode or "unknown"
+            estimate = CostEstimate(
+                None,
+                None,
+                CostStatus.UNKNOWN,
+                "no_attempts",
+                mode,
+                "hypothetical_direct_provider_estimate"
+                if mode == "live"
+                else "unknown_execution_mode",
+                "",
+                _safe_route_label(_canonical_route(route)),
+                aggregate_input_tokens,
+                aggregate_output_tokens,
+                None,
+                False,
+                snapshot,
+            )
     else:
         estimates = [
             estimate_attempt_cost(item, route=route, snapshot=snapshot) for item in terminal
