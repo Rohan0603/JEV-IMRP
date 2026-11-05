@@ -189,6 +189,8 @@ def main() -> int:
             print("git status changed during verification")
         return 1
 
+    if check_status < 0 or format_status < 0:
+        return 1
     return max(check_status, format_status)
 
 

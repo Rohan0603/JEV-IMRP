@@ -39,6 +39,15 @@ def test_hashes_tracked_regular_file(tmp_path: Path) -> None:
     assert "tracked.txt" in hashes
 
 
+def test_signal_terminated_quality_check_fails_closed() -> None:
+    with (
+        patch.object(_MODULE, "tracked_file_hashes", side_effect=[{}, {}]),
+        patch.object(_MODULE, "worktree_status", return_value=b""),
+        patch.object(_MODULE, "run", side_effect=[-9, 0]),
+    ):
+        assert _MODULE.main() == 1
+
+
 def test_rejects_tracked_symlink_without_reading_target(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
