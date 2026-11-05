@@ -71,4 +71,4 @@ async def _assert_cancelled_inflight_call_is_durably_recorded(tmp_path: Path) ->
     assert len(attempts) == 1
     assert attempts[0].candidate_id == "candidate-1"
     assert attempts[0].failure_reason == "cancelled"
-    assert attempts[0].attempt_id == "exp-cancel:candidate-1:a00"
+    assert attempts[0].attempt_id == "exp-cancel:candidate-1:mocked:a00"

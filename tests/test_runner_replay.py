@@ -3,7 +3,7 @@ from pathlib import Path
 
 from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.runner import JevRunner
-from jev_imrp.models.jev_client import CallResult, Candidate, Question
+from jev_imrp.models.jev_client import CallResult, Candidate, JevClient, Question
 
 
 class CountingClient:
@@ -27,6 +27,32 @@ class CountingClient:
 
     async def aclose(self) -> None:
         return None
+
+
+class LiveCountingClient(CountingClient):
+    execution_mode = "live"
+
+
+def _candidate(candidate_id: str) -> Candidate:
+    return Candidate(
+        candidate_id=candidate_id,
+        symbol="SYNTH",
+        side="BUY",
+        decision_timestamp_utc="2026-01-01T00:00:00+00:00",
+        horizon_minutes=5,
+        features={},
+    )
+
+
+def _runner(client: JevClient, store: AttemptStore, *, experiment_id: str) -> JevRunner:
+    return JevRunner(
+        client=client,
+        store=store,
+        experiment_id=experiment_id,
+        questions=(Question(id="q", type="box", instructions="classify"),),
+        model_id="jev-1.13.0",
+        confirmatory=True,
+    )
 
 
 def test_restart_replays_terminal_attempt_without_recalling_client(tmp_path: Path) -> None:
@@ -89,3 +115,40 @@ async def _assert_summary_excludes_other_experiments(tmp_path: Path) -> None:
 
     assert result.coverage["attempts_total"] == 1
     assert result.coverage["failure_reasons"] == {}
+
+
+def test_execution_modes_have_distinct_attempt_records(tmp_path: Path) -> None:
+    asyncio.run(_assert_execution_modes_have_distinct_attempt_records(tmp_path))
+
+
+async def _assert_execution_modes_have_distinct_attempt_records(tmp_path: Path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    candidate = _candidate("candidate-1")
+    mocked = CountingClient()
+    live = LiveCountingClient()
+
+    mocked_result = await _runner(mocked, store, experiment_id="exp-modes").run((candidate,))
+    live_result = await _runner(live, store, experiment_id="exp-modes").run((candidate,))
+
+    assert mocked_result.coverage["attempts_total"] == 1
+    assert live_result.coverage["attempts_total"] == 1
+    assert mocked.calls == 1
+    assert live.calls == 1
+    assert len(store.attempts()) == 2
+    assert {attempt.execution_mode for attempt in store.attempts()} == {"mocked", "live"}
+
+
+def test_summary_excludes_stale_candidates(tmp_path: Path) -> None:
+    asyncio.run(_assert_summary_excludes_stale_candidates(tmp_path))
+
+
+async def _assert_summary_excludes_stale_candidates(tmp_path: Path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = CountingClient()
+    runner = _runner(client, store, experiment_id="exp-candidates")
+
+    await runner.run((_candidate("stale"),))
+    result = await runner.run((_candidate("current"),))
+
+    assert result.coverage["candidates_total"] == 1
+    assert result.coverage["attempts_total"] == 1

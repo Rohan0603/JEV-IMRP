@@ -622,9 +622,14 @@ class Attempt:
         )
 
 
-def attempt_id_for(experiment_id: str, candidate_id: str, attempt_number: int) -> str:
-    """Deterministic attempt id, so a rerun rewrites the same id, not a new one."""
-    return f"{experiment_id}:{candidate_id}:a{attempt_number:02d}"
+def attempt_id_for(
+    experiment_id: str,
+    candidate_id: str,
+    attempt_number: int,
+    execution_mode: ExecutionMode,
+) -> str:
+    """Deterministic, mode-scoped attempt id for idempotent reruns."""
+    return f"{experiment_id}:{candidate_id}:{execution_mode}:a{attempt_number:02d}"
 
 
 # --------------------------------------------------------------------------

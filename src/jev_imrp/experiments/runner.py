@@ -356,7 +356,12 @@ class JevRunner:
                 answers = response.answers
 
         attempt = Attempt(
-            attempt_id=attempt_id_for(self.experiment_id, candidate.candidate_id, attempt_number),
+            attempt_id=attempt_id_for(
+                self.experiment_id,
+                candidate.candidate_id,
+                attempt_number,
+                self.client.execution_mode,
+            ),
             experiment_id=self.experiment_id,
             candidate_id=candidate.candidate_id,
             execution_mode=self.client.execution_mode,
@@ -451,11 +456,13 @@ class JevRunner:
     def _summarise(
         self, decisions: tuple[Decision, ...], artifact_paths: dict[str, str]
     ) -> JevRunResult:
+        candidate_ids = {decision.candidate_id for decision in decisions}
         attempts = [
             attempt
             for attempt in self.store.attempts()
             if attempt.experiment_id == self.experiment_id
             and attempt.execution_mode == self.client.execution_mode
+            and attempt.candidate_id in candidate_ids
         ]
         total = len(decisions)
         answered = sum(1 for d in decisions if d.source == "jev")
