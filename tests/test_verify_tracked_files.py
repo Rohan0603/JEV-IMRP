@@ -230,9 +230,20 @@ def test_unc_final_path_keeps_server_share_root() -> None:
     )
 
 
+def test_mixed_case_unc_final_path_keeps_server_share_root() -> None:
+    assert _MODULE._normalize_final_path(r"\\?\uNc\server\share\tracked.txt") == Path(
+        r"\\server\share\tracked.txt"
+    )
+
+
 def test_volume_final_path_is_rejected() -> None:
     with pytest.raises(UnsafeTrackedPathError, match="unsupported Windows handle namespace"):
         _MODULE._normalize_final_path(r"\\?\Volume{abc}\tracked.txt")
+
+
+def test_unknown_windows_handle_namespace_is_rejected() -> None:
+    with pytest.raises(UnsafeTrackedPathError, match="unsupported Windows handle namespace"):
+        _MODULE._normalize_final_path(r"\\?\GLOBALROOT\Device\HarddiskVolume1\tracked.txt")
 
 
 def test_handle_path_failure_closes_descriptor(tmp_path: Path) -> None:

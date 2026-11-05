@@ -105,13 +105,17 @@ def _final_handle_path(fd: int) -> Path | None:
 
 
 def _normalize_final_path(value: str) -> Path:
-    if value.startswith("\\\\?\\UNC\\"):
-        return Path("\\\\" + value[len("\\\\?\\UNC\\") :])
-    if value.startswith("\\\\?\\Volume{"):
+    prefix = "\\\\?\\"
+    if not value.startswith(prefix):
+        return Path(value)
+    namespace = value[len(prefix) :]
+    if namespace[:4].casefold() == "unc\\":
+        return Path("\\\\" + namespace[4:])
+    if namespace.casefold().startswith("volume{"):
         raise UnsafeTrackedPathError("unsupported Windows handle namespace")
-    if value.startswith("\\\\?\\"):
-        value = value[4:]
-    return Path(value)
+    if len(namespace) >= 3 and namespace[1] == ":" and namespace[2] == "\\":
+        return Path(namespace)
+    raise UnsafeTrackedPathError("unsupported Windows handle namespace")
 
 
 def _read_regular_file(file_path: Path, path: str, root: Path) -> str:
