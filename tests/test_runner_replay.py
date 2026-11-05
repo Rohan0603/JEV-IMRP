@@ -152,3 +152,65 @@ async def _assert_summary_excludes_stale_candidates(tmp_path: Path) -> None:
 
     assert result.coverage["candidates_total"] == 1
     assert result.coverage["attempts_total"] == 1
+
+
+def test_raw_responses_are_unique_per_attempt(tmp_path: Path) -> None:
+    asyncio.run(_assert_raw_responses_are_unique_per_attempt(tmp_path))
+
+
+async def _assert_raw_responses_are_unique_per_attempt(tmp_path: Path) -> None:
+    class RetryingClient(CountingClient):
+        async def answer(self, request, *, questions, attempt_number=0):
+            self.calls += 1
+            return CallResult(
+                payload={
+                    "attempt": attempt_number,
+                    "model": self.model_id,
+                    "answers": {}
+                    if attempt_number == 0
+                    else {"q": {"value": "accept", "confidence": 0.9}},
+                    "usage": {"input_tokens": 2, "output_tokens": 1},
+                },
+                returned_model_id=self.model_id,
+                status=529 if attempt_number == 0 else 200,
+            )
+
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = RetryingClient()
+    result = await JevRunner(
+        client=client,
+        store=store,
+        experiment_id="exp-raw",
+        questions=(Question(id="q", type="box", instructions="classify"),),
+        model_id="jev-1.13.0",
+        confirmatory=True,
+        raw_response_dir=str(tmp_path / "raw"),
+    ).run((_candidate("candidate-1"),))
+
+    assert result.decision_for("candidate-1").terminal == "accept"
+    attempts = store.attempts()
+    assert len(attempts) == 2
+    assert attempts[0].raw_response_ref != attempts[1].raw_response_ref
+    assert Path(attempts[0].raw_response_ref).read_text(encoding="utf-8").find('"attempt": 0') >= 0
+    assert Path(attempts[1].raw_response_ref).read_text(encoding="utf-8").find('"attempt": 1') >= 0
+
+
+def test_unexpected_client_exception_is_durably_recorded(tmp_path: Path) -> None:
+    asyncio.run(_assert_unexpected_client_exception_is_durably_recorded(tmp_path))
+
+
+async def _assert_unexpected_client_exception_is_durably_recorded(tmp_path: Path) -> None:
+    class BrokenClient(CountingClient):
+        async def answer(self, request, *, questions, attempt_number=0):
+            self.calls += 1
+            raise RuntimeError("transport exploded")
+
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    result = await _runner(BrokenClient(), store, experiment_id="exp-error").run(
+        (_candidate("candidate-1"),)
+    )
+
+    assert result.decision_for("candidate-1").terminal == "reject"
+    attempts = store.attempts()
+    assert len(attempts) == 1
+    assert attempts[0].failure_reason == "client_error"

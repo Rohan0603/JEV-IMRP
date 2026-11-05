@@ -302,6 +302,20 @@ class JevRunner:
                     latency_ms,
                 )
                 raise
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - started) * 1000.0
+                outcome = self._record(
+                    request,
+                    candidate,
+                    CallResult(
+                        failure_reason="client_error",
+                        error_detail=exc.__class__.__name__,
+                    ),
+                    attempt_number,
+                    outcome,
+                    latency_ms,
+                )
+                return outcome
             latency_ms = (time.perf_counter() - started) * 1000.0
             outcome = self._record(request, candidate, result, attempt_number, outcome, latency_ms)
             if outcome.failure_reason is None:
@@ -376,7 +390,7 @@ class JevRunner:
             http_status=result.status,
             latency_ms=round(latency_ms, 3),
             failure_reason=failure_reason,
-            raw_response_ref=self._store_raw(result.payload, candidate),
+            raw_response_ref=self._store_raw(result.payload, candidate, attempt_number),
             answers=answers,
             input_tokens=response.input_tokens if response else outcome.input_tokens,
             output_tokens=response.output_tokens if response else outcome.output_tokens,
@@ -394,11 +408,16 @@ class JevRunner:
             payload_hash=outcome.payload_hash,
         )
 
-    def _store_raw(self, payload: Any, candidate: Candidate) -> str | None:
+    def _store_raw(self, payload: Any, candidate: Candidate, attempt_number: int) -> str | None:
         """Keep the raw response next to the attempt record (plan 9.4)."""
         if payload is None or not self.raw_response_dir:
             return None
-        path = Path(self.raw_response_dir) / f"{candidate.candidate_id}.json"
+        path = (
+            Path(self.raw_response_dir)
+            / self.experiment_id
+            / self.client.execution_mode
+            / f"{candidate.candidate_id}-a{attempt_number:02d}.json"
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(payload, sort_keys=True, indent=2, default=str), encoding="utf-8"
