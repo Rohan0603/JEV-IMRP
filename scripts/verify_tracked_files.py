@@ -22,6 +22,52 @@ def _is_reparse_point(file_stat: os.stat_result) -> bool:
     return bool(getattr(file_stat, "st_file_attributes", 0) & _REPARSE_POINT)
 
 
+def _path_signature(file_stat: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        file_stat.st_dev,
+        file_stat.st_ino,
+        file_stat.st_mode,
+        file_stat.st_size,
+        file_stat.st_mtime_ns,
+    )
+
+
+def _validate_parent_directories(
+    root: Path, relative: Path, path: str
+) -> list[tuple[Path, tuple[int, int, int, int, int]]]:
+    parents: list[tuple[Path, tuple[int, int, int, int, int]]] = []
+    current = root
+    for component in relative.parts[:-1]:
+        current /= component
+        try:
+            parent_stat = current.lstat()
+        except FileNotFoundError as exc:
+            raise UnsafeTrackedPathError(f"missing parent directory: {path}") from exc
+        if stat.S_ISLNK(parent_stat.st_mode) or _is_reparse_point(parent_stat):
+            raise UnsafeTrackedPathError(f"symlink or reparse parent directory: {path}")
+        if not stat.S_ISDIR(parent_stat.st_mode):
+            raise UnsafeTrackedPathError(f"non-directory parent path: {path}")
+        parents.append((current, _path_signature(parent_stat)))
+    return parents
+
+
+def _validate_parent_snapshots(
+    parents: list[tuple[Path, tuple[int, int, int, int, int]]], path: str
+) -> None:
+    for parent, before_signature in parents:
+        try:
+            after = parent.lstat()
+        except FileNotFoundError as exc:
+            raise UnsafeTrackedPathError(f"parent directory changed during read: {path}") from exc
+        if (
+            stat.S_ISLNK(after.st_mode)
+            or _is_reparse_point(after)
+            or not stat.S_ISDIR(after.st_mode)
+            or _path_signature(after) != before_signature
+        ):
+            raise UnsafeTrackedPathError(f"parent directory changed during read: {path}")
+
+
 def _parse_index_entries(output: bytes) -> list[tuple[int, str]]:
     entries: list[tuple[int, str]] = []
     for record in output.split(b"\0"):
@@ -94,7 +140,9 @@ def tracked_file_hashes(root: Path = ROOT) -> dict[str, str]:
         relative = Path(path)
         if relative.is_absolute() or ".." in relative.parts:
             raise UnsafeTrackedPathError(f"unsafe tracked path: {path}")
+        parents = _validate_parent_directories(root, relative, path)
         hashes[path] = _read_regular_file(root / relative, path)
+        _validate_parent_snapshots(parents, path)
     return hashes
 
 
