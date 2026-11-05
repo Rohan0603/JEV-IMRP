@@ -254,9 +254,21 @@ class JevRunner:
         outcome = _AttemptOutcome(payload_hash=canonical_hash(state))
         for attempt_number in range(self.retry.max_retries + 1):
             started = time.perf_counter()
-            result: CallResult = await self.client.answer(
-                request, questions=self.questions, attempt_number=attempt_number
-            )
+            try:
+                result: CallResult = await self.client.answer(
+                    request, questions=self.questions, attempt_number=attempt_number
+                )
+            except asyncio.CancelledError:
+                latency_ms = (time.perf_counter() - started) * 1000.0
+                self._record(
+                    request,
+                    candidate,
+                    CallResult(failure_reason="cancelled"),
+                    attempt_number,
+                    outcome,
+                    latency_ms,
+                )
+                raise
             latency_ms = (time.perf_counter() - started) * 1000.0
             outcome = self._record(request, candidate, result, attempt_number, outcome, latency_ms)
             if outcome.failure_reason is None:

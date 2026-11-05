@@ -91,6 +91,7 @@ FAILURE_REASONS: Final = (
     "model_mismatch",
     "alias_in_confirmatory",
     "client_error",
+    "cancelled",
 )
 
 
