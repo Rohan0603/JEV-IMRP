@@ -182,3 +182,16 @@ def test_aggregate_rejects_mixed_execution_modes() -> None:
 
     assert report.status is CostStatus.UNKNOWN
     assert report.reason == "mixed_execution_modes"
+
+
+def test_cost_record_persists_pricing_snapshot_metadata() -> None:
+    record = aggregate_cost([attempt(input_tokens=1_000)]).to_record()
+
+    assert record["pricing_provider"] == "typesafe"
+    assert record["pricing_route"] == "api.typesafe.ai/v1/systemone"
+    assert record["pricing_currency"] == "USD"
+    assert record["input_usd_per_million"] == "0.042"
+    assert record["output_usd_per_million"] == "0"
+    assert record["pricing_source_updated"] == "2026-11-03"
+    assert record["pricing_checked_at"] == "2026-11-05"
+    assert record["pricing_effective_from"] == "UNKNOWN"

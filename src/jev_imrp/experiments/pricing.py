@@ -86,7 +86,15 @@ class CostEstimate:
             ),
             "missing_output_usage": self.missing_output_usage,
             "pricing_snapshot_version": self.snapshot.version,
+            "pricing_provider": self.snapshot.provider,
+            "pricing_route": self.snapshot.route,
+            "pricing_currency": self.snapshot.currency,
+            "input_usd_per_million": str(self.snapshot.input_usd_per_million),
+            "output_usd_per_million": str(self.snapshot.output_usd_per_million),
             "pricing_source": self.snapshot.source_url,
+            "pricing_source_updated": self.snapshot.source_updated,
+            "pricing_checked_at": self.snapshot.checked_at,
+            "pricing_effective_from": self.snapshot.effective_from,
             "formula": "input_tokens * input_usd_per_million / 1000000",
         }
 
