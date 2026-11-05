@@ -123,6 +123,23 @@ def test_unknown_route_is_not_priced() -> None:
     assert estimate.reason == "unknown_route"
 
 
+def test_invalid_execution_mode_is_not_priced() -> None:
+    estimate = estimate_attempt_cost(attempt(mode="sandbox"))  # type: ignore[arg-type]
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.estimated_usd is None
+    assert estimate.reason == "unknown_execution_mode"
+
+
+@pytest.mark.parametrize("output_tokens", [-1, True, "1000"])
+def test_malformed_output_usage_is_unknown(output_tokens: object) -> None:
+    estimate = estimate_attempt_cost(attempt(output_tokens=output_tokens))  # type: ignore[arg-type]
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.estimated_usd is None
+    assert estimate.reason == "output_usage_invalid"
+
+
 def test_retry_unknown_billing_and_duplicate_attempts_are_preserved() -> None:
     first = attempt(
         attempt_id="exp:candidate:a00",
@@ -241,6 +258,13 @@ def test_aggregate_rejects_mixed_execution_modes() -> None:
     assert report.reason == "mixed_execution_modes"
 
 
+def test_aggregate_rejects_attempts_from_wrong_execution_mode() -> None:
+    report = aggregate_cost([attempt(mode="mocked")], execution_mode="live")
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.reason == "execution_mode_mismatch"
+
+
 def test_empty_live_report_is_not_labeled_mocked_zero() -> None:
     report = aggregate_cost([], execution_mode="live")
 
@@ -269,6 +293,7 @@ def test_cost_record_persists_pricing_snapshot_metadata() -> None:
     assert record["pricing_source_updated"] == "2026-11-03"
     assert record["pricing_checked_at"] == "2026-11-05"
     assert record["pricing_effective_from"] == "UNKNOWN"
+    assert record["pricing_source_title"] == "How much does Jev cost?"
 
 
 def test_runner_result_carries_persisted_cost_report(tmp_path) -> None:
@@ -312,6 +337,29 @@ def test_runner_without_verified_live_endpoint_is_unknown(tmp_path) -> None:
 
     assert result.cost_report.status is CostStatus.UNKNOWN
     assert result.cost_report.reason == "unknown_route"
+
+
+def test_runner_cost_report_ignores_attempts_from_other_execution_mode(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(attempt(mode="mocked", input_tokens=1_000_000))
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="exp",
+        client=SimpleNamespace(
+            execution_mode="live",
+            config=SimpleNamespace(endpoint="api.typesafe.ai/v1/systemone"),
+        ),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "accept", "jev", attempt_id="exp:candidate:a00"),),
+        {},
+    )
+
+    assert result.cost_report.status is CostStatus.UNKNOWN
+    assert result.cost_report.reason == "no_attempts"
 
 
 def test_runner_cost_report_ignores_attempts_from_other_experiments(tmp_path) -> None:

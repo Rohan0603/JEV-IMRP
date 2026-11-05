@@ -21,9 +21,11 @@ PROVIDER: Final = "typesafe"
 JEV_ROUTE: Final = "api.typesafe.ai/v1/systemone"
 CURRENCY: Final = "USD"
 SOURCE_URL: Final = "https://help.typesafe.ai/articles/5187202169-how-much-does-jev-cost"
+SOURCE_TITLE: Final = "How much does Jev cost?"
 SOURCE_UPDATED: Final = "2026-11-03"
 CHECKED_AT: Final = "2026-11-05"
 EFFECTIVE_FROM: Final = "UNKNOWN"
+VALID_EXECUTION_MODES: Final = frozenset({"live", "mocked"})
 INPUT_USD_PER_MILLION: Final = Decimal("0.042")
 OUTPUT_USD_PER_MILLION: Final = Decimal("0")
 _MILLION: Final = Decimal("1000000")
@@ -45,6 +47,7 @@ class PricingSnapshot:
     input_usd_per_million: Decimal = INPUT_USD_PER_MILLION
     output_usd_per_million: Decimal = OUTPUT_USD_PER_MILLION
     source_url: str = SOURCE_URL
+    source_title: str = SOURCE_TITLE
     source_updated: str = SOURCE_UPDATED
     checked_at: str = CHECKED_AT
     effective_from: str = EFFECTIVE_FROM
@@ -93,6 +96,7 @@ class CostEstimate:
             "input_usd_per_million": str(self.snapshot.input_usd_per_million),
             "output_usd_per_million": str(self.snapshot.output_usd_per_million),
             "pricing_source": self.snapshot.source_url,
+            "pricing_source_title": self.snapshot.source_title,
             "pricing_source_updated": self.snapshot.source_updated,
             "pricing_checked_at": self.snapshot.checked_at,
             "pricing_effective_from": self.snapshot.effective_from,
@@ -165,6 +169,8 @@ def estimate_attempt_cost(
         if attempt.execution_mode == "mocked"
         else "hypothetical_direct_provider_estimate"
     )
+    if attempt.execution_mode not in VALID_EXECUTION_MODES:
+        mode_label = "unknown_execution_mode"
     base: dict[str, Any] = {
         "mode": attempt.execution_mode,
         "mode_label": mode_label,
@@ -175,6 +181,24 @@ def estimate_attempt_cost(
         "missing_output_usage": attempt.output_tokens is None,
         "snapshot": snapshot,
     }
+    if attempt.execution_mode not in VALID_EXECUTION_MODES:
+        return CostEstimate(
+            None,
+            None,
+            CostStatus.UNKNOWN,
+            "unknown_execution_mode",
+            output_cost_usd=None,
+            **base,
+        )
+    if attempt.output_tokens is not None and not _valid_tokens(attempt.output_tokens):
+        return CostEstimate(
+            None,
+            None,
+            CostStatus.UNKNOWN,
+            "output_usage_invalid",
+            output_cost_usd=None,
+            **base,
+        )
     if attempt.execution_mode == "mocked":
         return CostEstimate(
             estimated_usd=Decimal("0"),
@@ -260,6 +284,36 @@ def aggregate_cost(
         ]
         if output_values:
             aggregate_output_tokens = sum(output_values)
+    if execution_mode in VALID_EXECUTION_MODES and any(
+        item.execution_mode != execution_mode for item in terminal
+    ):
+        mode_label = (
+            "mocked_local_spend"
+            if execution_mode == "mocked"
+            else "hypothetical_direct_provider_estimate"
+        )
+        estimate = CostEstimate(
+            None,
+            None,
+            CostStatus.UNKNOWN,
+            "execution_mode_mismatch",
+            execution_mode,
+            mode_label,
+            snapshot.model_id,
+            _safe_route_label(_canonical_route(route)),
+            aggregate_input_tokens,
+            aggregate_output_tokens,
+            None,
+            any(item.output_tokens is None for item in terminal),
+            snapshot,
+        )
+        return CostReport(
+            **estimate.__dict__,
+            attempts_considered=unique_count + duplicate_count,
+            attempts_counted=len(terminal),
+            candidate_terminal_count=candidate_terminal_count,
+            duplicate_attempts=duplicate_count,
+        )
     if not terminal:
         if execution_mode == "mocked":
             estimate = CostEstimate(
@@ -407,6 +461,7 @@ __all__ = [
     "JEV_ROUTE",
     "OUTPUT_USD_PER_MILLION",
     "PRICING_SNAPSHOT_VERSION",
+    "SOURCE_TITLE",
     "SOURCE_UPDATED",
     "SOURCE_URL",
     "CostEstimate",
