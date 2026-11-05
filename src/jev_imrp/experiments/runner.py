@@ -252,7 +252,40 @@ class JevRunner:
         """Send one state with bounded retries, persisting every try."""
         request = build_request(state, self.model_id, self.questions)
         outcome = _AttemptOutcome(payload_hash=canonical_hash(state))
-        for attempt_number in range(self.retry.max_retries + 1):
+        existing = [
+            attempt
+            for attempt in self.store.for_candidate(candidate.candidate_id)
+            if attempt.experiment_id == self.experiment_id
+            and attempt.execution_mode == self.client.execution_mode
+        ]
+        if existing:
+            latest = max(existing, key=lambda attempt: attempt.retry_count)
+            outcome = _AttemptOutcome(
+                attempt_ids=[
+                    attempt.attempt_id for attempt in sorted(existing, key=lambda a: a.retry_count)
+                ],
+                answers=latest.answers,
+                returned_model_id=latest.returned_model_id,
+                failure_reason=latest.failure_reason,
+                http_status=latest.http_status,
+                input_tokens=latest.input_tokens,
+                output_tokens=latest.output_tokens,
+                payload_hash=latest.payload_hash,
+            )
+            retryable = (
+                latest.failure_reason is not None
+                and latest.http_status in self.retry.status_codes
+                and latest.retry_count < self.retry.max_retries
+            )
+            resumable_cancellation = latest.failure_reason == "cancelled"
+            if latest.answers or (
+                latest.failure_reason is not None and not retryable and not resumable_cancellation
+            ):
+                return outcome
+            start_attempt = latest.retry_count + 1
+        else:
+            start_attempt = 0
+        for attempt_number in range(start_attempt, self.retry.max_retries + 1):
             started = time.perf_counter()
             try:
                 result: CallResult = await self.client.answer(
@@ -418,7 +451,12 @@ class JevRunner:
     def _summarise(
         self, decisions: tuple[Decision, ...], artifact_paths: dict[str, str]
     ) -> JevRunResult:
-        attempts = self.store.attempts()
+        attempts = [
+            attempt
+            for attempt in self.store.attempts()
+            if attempt.experiment_id == self.experiment_id
+            and attempt.execution_mode == self.client.execution_mode
+        ]
         total = len(decisions)
         answered = sum(1 for d in decisions if d.source == "jev")
         failed = sum(1 for d in decisions if d.source == "failure_policy")
