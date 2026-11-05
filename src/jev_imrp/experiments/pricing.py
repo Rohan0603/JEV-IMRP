@@ -228,16 +228,25 @@ def aggregate_cost(
 ) -> CostReport:
     """Aggregate terminal attempts without per-attempt display rounding."""
     terminal, unique_count, duplicate_count = _terminal_attempts(attempts)
-    aggregate_input_tokens = (
-        sum(item.input_tokens for item in terminal)
-        if terminal and all(_valid_tokens(item.input_tokens) for item in terminal)
-        else None
-    )
-    aggregate_output_tokens = (
-        sum(item.output_tokens for item in terminal)
-        if terminal and all(_valid_tokens(item.output_tokens) for item in terminal)
-        else None
-    )
+    aggregate_input_tokens: int | None = None
+    if terminal:
+        input_values: list[int] = []
+        for item in terminal:
+            if not _valid_tokens(item.input_tokens):
+                break
+            input_values.append(item.input_tokens)
+        else:
+            aggregate_input_tokens = sum(input_values)
+
+    aggregate_output_tokens: int | None = None
+    if terminal:
+        output_values: list[int] = []
+        for item in terminal:
+            if not _valid_tokens(item.output_tokens):
+                break
+            output_values.append(item.output_tokens)
+        else:
+            aggregate_output_tokens = sum(output_values)
     if not terminal:
         estimate = CostEstimate(
             Decimal("0"),
