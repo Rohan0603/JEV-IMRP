@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = {
     "ruff": 127,
@@ -18,13 +17,16 @@ BASELINE = {
 
 
 def run(*args: str) -> tuple[int, str]:
-    result = subprocess.run(
-        args,
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            args,
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        return 127, f"{type(exc).__name__}: {exc}"
     return result.returncode, result.stdout + result.stderr
 
 
@@ -44,15 +46,26 @@ def count_mypy(output: str) -> int:
 
 
 def main() -> int:
-    _, ruff_output = run("ruff", "check", ".", "--output-format", "concise")
-    _, format_output = run("ruff", "format", "--check", ".")
-    _, mypy_output = run("mypy")
+    ruff_status, ruff_output = run("ruff", "check", ".", "--output-format", "concise")
+    format_status, format_output = run("ruff", "format", "--check", ".")
+    mypy_status, mypy_output = run("mypy")
+    failures = []
+    for name, status, output in (
+        ("ruff", ruff_status, ruff_output),
+        ("format", format_status, format_output),
+        ("mypy", mypy_status, mypy_output),
+    ):
+        if status not in (0, 1):
+            failures.append(f"{name} command failed with exit code {status}: {output.strip()}")
     observed = {
         "ruff": count_ruff(ruff_output),
         "format_files": count_format_files(format_output),
         "mypy": count_mypy(mypy_output),
     }
     print(json.dumps({"baseline": BASELINE, "observed": observed}, sort_keys=True))
+    if failures:
+        print("quality tool failure: " + "; ".join(failures), file=sys.stderr)
+        return 1
     regressions = [
         f"{name}: {observed[name]} > {BASELINE[name]}"
         for name in BASELINE
