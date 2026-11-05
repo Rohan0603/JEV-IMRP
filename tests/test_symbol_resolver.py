@@ -97,6 +97,22 @@ def test_get_credentials_raises_when_env_not_set():
             _get_credentials()
 
 
+def test_get_credentials_rejects_empty_env_values():
+    """Empty credential values are invalid, just like missing variables."""
+    with patch.dict(
+        os.environ,
+        {
+            "SHOONYA_API_KEY": "",
+            "SHOONYA_API_SECRET": "secret",
+            "SHOONYA_ACCESS_TOKEN": "token",
+        },
+    ):
+        from jev_imrp.ingest.symbol_resolver import _get_credentials
+
+        with pytest.raises(SymbolResolutionError, match="missing credentials"):
+            _get_credentials()
+
+
 def test_get_credentials_returns_tuple_when_all_present():
     """All three credentials present → returned as a tuple."""
     with patch.dict(os.environ, {

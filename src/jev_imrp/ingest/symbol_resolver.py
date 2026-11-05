@@ -61,7 +61,7 @@ def _get_credentials() -> tuple[str, str, str]:
     api_key = os.getenv("SHOONYA_API_KEY")
     api_secret = os.getenv("SHOONYA_API_SECRET")
     access_token = os.getenv("SHOONYA_ACCESS_TOKEN")
-    if api_key is None or api_secret is None or access_token is None:
+    if not all([api_key, api_secret, access_token]):
         missing = [
             name
             for name, val in (
@@ -72,6 +72,7 @@ def _get_credentials() -> tuple[str, str, str]:
             if not val
         ]
         raise SymbolResolutionError(f"missing credentials: {missing}")
+    assert api_key is not None and api_secret is not None and access_token is not None
     return api_key, api_secret, access_token
 
 
