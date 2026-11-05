@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import stat
@@ -99,11 +100,18 @@ def _final_handle_path(fd: int) -> Path | None:
         if result == 0:
             raise OSError(ctypes.get_last_error(), "GetFinalPathNameByHandleW failed")
         if result < size:
-            value = buffer.value
-            if value.startswith("\\\\?\\"):
-                value = value[4:]
-            return Path(value)
+            return _normalize_final_path(buffer.value)
         size = result + 1
+
+
+def _normalize_final_path(value: str) -> Path:
+    if value.startswith("\\\\?\\UNC\\"):
+        return Path("\\\\" + value[len("\\\\?\\UNC\\") :])
+    if value.startswith("\\\\?\\Volume{"):
+        raise UnsafeTrackedPathError("unsupported Windows handle namespace")
+    if value.startswith("\\\\?\\"):
+        value = value[4:]
+    return Path(value)
 
 
 def _read_regular_file(file_path: Path, path: str, root: Path) -> str:
@@ -125,38 +133,44 @@ def _read_regular_file(file_path: Path, path: str, root: Path) -> str:
         raise UnsafeTrackedPathError(f"could not safely open tracked path: {path}") from exc
 
     try:
-        opened = os.fstat(fd)
-        if not stat.S_ISREG(opened.st_mode) or _is_reparse_point(opened):
-            raise UnsafeTrackedPathError(f"non-regular tracked path: {path}")
-        final_path = _final_handle_path(fd)
-        if final_path is not None:
-            try:
-                final_path.resolve(strict=False).relative_to(root.resolve(strict=False))
-            except ValueError as exc:
-                raise UnsafeTrackedPathError(
-                    f"open handle resolved outside target root: {path}"
-                ) from exc
-        digest = hashlib.sha256()
-        with os.fdopen(fd, "rb", closefd=True) as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
-        after = file_path.lstat()
-    except UnsafeTrackedPathError:
-        raise
-    except (FileNotFoundError, OSError) as exc:
-        raise UnsafeTrackedPathError(f"tracked path became unsafe during read: {path}") from exc
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode) or _is_reparse_point(opened):
+                raise UnsafeTrackedPathError(f"non-regular tracked path: {path}")
+            final_path = _final_handle_path(fd)
+            if final_path is not None:
+                try:
+                    final_path.resolve(strict=False).relative_to(root.resolve(strict=False))
+                except ValueError as exc:
+                    raise UnsafeTrackedPathError(
+                        f"open handle resolved outside target root: {path}"
+                    ) from exc
+            digest = hashlib.sha256()
+            with os.fdopen(fd, "rb", closefd=True) as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            fd = -1
+            after = file_path.lstat()
+        except UnsafeTrackedPathError:
+            raise
+        except (FileNotFoundError, OSError) as exc:
+            raise UnsafeTrackedPathError(f"tracked path became unsafe during read: {path}") from exc
 
-    before_signature = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
-    opened_signature = (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
-    after_signature = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
-    if (
-        before_signature != opened_signature
-        or opened_signature != after_signature
-        or stat.S_ISLNK(after.st_mode)
-        or _is_reparse_point(after)
-    ):
-        raise UnsafeTrackedPathError(f"tracked path changed during read: {path}")
-    return digest.hexdigest()
+        before_signature = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+        opened_signature = (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
+        after_signature = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+        if (
+            before_signature != opened_signature
+            or opened_signature != after_signature
+            or stat.S_ISLNK(after.st_mode)
+            or _is_reparse_point(after)
+        ):
+            raise UnsafeTrackedPathError(f"tracked path changed during read: {path}")
+        return digest.hexdigest()
+    finally:
+        if fd >= 0:
+            with contextlib.suppress(OSError):
+                os.close(fd)
 
 
 def tracked_file_hashes(root: Path = ROOT) -> dict[str, str]:

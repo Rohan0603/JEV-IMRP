@@ -224,6 +224,45 @@ def test_rejects_open_handle_that_resolves_outside_root(tmp_path: Path) -> None:
         tracked_file_hashes(repo)
 
 
+def test_unc_final_path_keeps_server_share_root() -> None:
+    assert _MODULE._normalize_final_path(r"\\?\UNC\server\share\tracked.txt") == Path(
+        r"\\server\share\tracked.txt"
+    )
+
+
+def test_volume_final_path_is_rejected() -> None:
+    with pytest.raises(UnsafeTrackedPathError, match="unsupported Windows handle namespace"):
+        _MODULE._normalize_final_path(r"\\?\Volume{abc}\tracked.txt")
+
+
+def test_handle_path_failure_closes_descriptor(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    tracked = repo / "tracked.txt"
+    tracked.write_text("present", encoding="utf-8")
+    git(repo, "add", "tracked.txt")
+    opened: list[int] = []
+    original_open = _MODULE.os.open
+
+    def capture_open(path: object, flags: int, *args: object) -> int:
+        fd = original_open(path, flags, *args)
+        opened.append(fd)
+        return fd
+
+    with (
+        patch.object(_MODULE.os, "open", side_effect=capture_open),
+        patch.object(
+            _MODULE,
+            "_final_handle_path",
+            side_effect=UnsafeTrackedPathError("synthetic handle failure"),
+        ),
+        pytest.raises(UnsafeTrackedPathError, match="synthetic handle failure"),
+    ):
+        tracked_file_hashes(repo)
+    assert opened
+    with pytest.raises(OSError):
+        _MODULE.os.fstat(opened[0])
+
+
 def test_rejects_file_swap_detected_after_read(tmp_path: Path) -> None:
     repo = init_repo(tmp_path)
     tracked = repo / "tracked.txt"
