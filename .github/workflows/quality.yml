@@ -16,12 +16,16 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv python install 3.12
+      - run: uv python install ${{ matrix.python-version }}
       - run: uv sync --locked --extra dev
       - run: uv run pytest -q
       - name: Import smoke test
@@ -31,12 +35,16 @@ jobs:
   quality-ratchet:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv python install 3.12
+      - run: uv python install ${{ matrix.python-version }}
       - run: uv sync --locked --extra dev
       - name: Prevent quality regressions
         run: uv run python scripts/quality_ratchet.py
