@@ -2,15 +2,18 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
+from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.pricing import (
     CostStatus,
     aggregate_cost,
     estimate_attempt_cost,
     report_costs_by_mode,
 )
+from jev_imrp.experiments.runner import Decision, JevRunner
 from jev_imrp.models.jev_client import CONFIRMATORY_MODEL_ID, Attempt
 
 
@@ -195,3 +198,23 @@ def test_cost_record_persists_pricing_snapshot_metadata() -> None:
     assert record["pricing_source_updated"] == "2026-11-03"
     assert record["pricing_checked_at"] == "2026-11-05"
     assert record["pricing_effective_from"] == "UNKNOWN"
+
+
+def test_runner_result_carries_persisted_cost_report(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(attempt(input_tokens=1_000))
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="exp",
+        client=SimpleNamespace(execution_mode="live"),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "accept", "jev", attempt_id="exp:candidate:a00"),),
+        {},
+    )
+
+    assert result.cost_report.estimated_usd == Decimal("0.000042")
+    assert result.to_record()["cost_report"]["pricing_source_updated"] == "2026-11-03"
