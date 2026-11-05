@@ -409,7 +409,11 @@ class JevRunner:
     def _summarise(
         self, decisions: tuple[Decision, ...], artifact_paths: dict[str, str]
     ) -> JevRunResult:
-        attempts = self.store.attempts()
+        attempts = [
+            attempt
+            for attempt in self.store.attempts()
+            if attempt.experiment_id == self.experiment_id
+        ]
         total = len(decisions)
         answered = sum(1 for d in decisions if d.source == "jev")
         failed = sum(1 for d in decisions if d.source == "failure_policy")
@@ -446,6 +450,12 @@ class JevRunner:
             else ()
         )
         artifacts = {**artifact_paths, "attempts": str(self.store.path)}
+        endpoint = getattr(getattr(self.client, "config", None), "endpoint", None)
+        cost_report = (
+            aggregate_cost(attempts, route=endpoint)
+            if isinstance(endpoint, str)
+            else aggregate_cost(attempts)
+        )
         return JevRunResult(
             experiment_id=self.experiment_id,
             execution_mode=self.client.execution_mode,
@@ -454,7 +464,7 @@ class JevRunner:
             decisions=decisions,
             coverage=coverage,
             artifact_paths=artifacts,
-            cost_report=aggregate_cost(attempts),
+            cost_report=cost_report,
             failures=tuple(sorted(reasons)),
             warnings=warnings,
         )

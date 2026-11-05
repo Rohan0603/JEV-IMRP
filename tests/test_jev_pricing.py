@@ -218,3 +218,60 @@ def test_runner_result_carries_persisted_cost_report(tmp_path) -> None:
 
     assert result.cost_report.estimated_usd == Decimal("0.000042")
     assert result.to_record()["cost_report"]["pricing_source_updated"] == "2026-11-03"
+
+
+def test_runner_cost_report_ignores_attempts_from_other_experiments(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(
+        replace(
+            attempt(attempt_id="old:historical:a00", input_tokens=1_000_000),
+            candidate_id="historical",
+            experiment_id="old",
+        )
+    )
+    store.append(
+        replace(
+            attempt(attempt_id="current:candidate:a00", input_tokens=1_000_000),
+            experiment_id="current",
+        )
+    )
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="current",
+        client=SimpleNamespace(
+            execution_mode="live", config=SimpleNamespace(endpoint="api.typesafe.ai/v1/systemone")
+        ),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "accept", "jev", attempt_id="current:candidate:a00"),),
+        {},
+    )
+
+    assert result.cost_report.estimated_usd == Decimal("0.042")
+    assert result.cost_report.attempts_counted == 1
+
+
+def test_runner_cost_report_rejects_custom_live_endpoint(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(attempt(input_tokens=1_000_000))
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="exp",
+        client=SimpleNamespace(
+            execution_mode="live",
+            config=SimpleNamespace(endpoint="https://proxy.example/v1/systemone"),
+        ),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "accept", "jev", attempt_id="exp:candidate:a00"),),
+        {},
+    )
+
+    assert result.cost_report.status is CostStatus.UNKNOWN
+    assert result.cost_report.reason == "unknown_route"
