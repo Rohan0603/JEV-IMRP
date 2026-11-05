@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -75,6 +76,44 @@ def test_rejects_symlink_parent_without_reading_outside_target(tmp_path: Path) -
 
     with pytest.raises(UnsafeTrackedPathError, match="parent"):
         tracked_file_hashes(repo)
+
+
+def test_rejects_junction_parent_without_reading_outside_target(tmp_path: Path) -> None:
+    if sys.platform != "win32":
+        pytest.skip("junctions are a Windows-specific reparse-point fixture")
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init_repo(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "tracked.txt").write_bytes(b"synthetic secret")
+    nested = repo / "nested"
+    nested.mkdir()
+    (nested / "tracked.txt").write_bytes(b"safe")
+    git(repo, "add", "nested/tracked.txt")
+    (nested / "tracked.txt").unlink()
+    nested.rmdir()
+    try:
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(nested), str(outside)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        pytest.skip(f"junction creation unavailable: {exc}")
+
+    try:
+        with pytest.raises(UnsafeTrackedPathError, match="parent"):
+            tracked_file_hashes(repo)
+    finally:
+        subprocess.run(
+            ["cmd", "/c", "rmdir", str(nested)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
 
 
 def test_rejects_missing_tracked_path(tmp_path: Path) -> None:
