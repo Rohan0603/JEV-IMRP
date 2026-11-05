@@ -1,9 +1,12 @@
 import asyncio
 from pathlib import Path
 
+import pytest
+
 from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.runner import JevRunner
 from jev_imrp.models.jev_client import CallResult, Candidate, JevClient, Question
+from jev_imrp.models.jev_mock import MockConfig, MockJevClient
 
 
 class CountingClient:
@@ -214,3 +217,113 @@ async def _assert_unexpected_client_exception_is_durably_recorded(tmp_path: Path
     attempts = store.attempts()
     assert len(attempts) == 1
     assert attempts[0].failure_reason == "client_error"
+
+
+@pytest.mark.parametrize("status_step", ["429", "529"])
+def test_retryable_http_failures_are_reconciled_per_attempt(
+    tmp_path: Path, status_step: str
+) -> None:
+    asyncio.run(_assert_retryable_http_failures_are_reconciled_per_attempt(tmp_path, status_step))
+
+
+async def _assert_retryable_http_failures_are_reconciled_per_attempt(
+    tmp_path: Path, status_step: str
+) -> None:
+    candidate = _candidate("c")
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = MockJevClient(MockConfig(steps={"c": (status_step, "ok")}))
+    result = await _runner(client, store, experiment_id=f"exp-{status_step}").run((candidate,))
+
+    assert result.decision_for("c").terminal == "accept"
+    assert result.coverage["attempts_total"] == 2
+    assert result.coverage["candidates_attempted"] == 1
+    assert result.coverage["failure_reasons"] == {"http_error": 1}
+    assert client.calls == ["c", "c"]
+
+
+@pytest.mark.parametrize(
+    "step,expected_reason",
+    [
+        ("500", "http_error"),
+        ("timeout", "timeout"),
+        ("malformed", "malformed_response"),
+        ("model_mismatch", "model_mismatch"),
+    ],
+)
+def test_non_retryable_failures_are_durable(
+    tmp_path: Path, step: str, expected_reason: str
+) -> None:
+    asyncio.run(_assert_non_retryable_failures_are_durable(tmp_path, step, expected_reason))
+
+
+async def _assert_non_retryable_failures_are_durable(
+    tmp_path: Path, step: str, expected_reason: str
+) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = MockJevClient(MockConfig(steps={"c": (step,)}))
+    result = await _runner(client, store, experiment_id=f"exp-{step}").run((_candidate("c"),))
+
+    assert result.decision_for("c").terminal == "reject"
+    assert result.coverage["attempts_total"] == 1
+    assert result.coverage["failure_reasons"] == {expected_reason: 1}
+    assert client.calls == ["c"]
+
+
+@pytest.mark.parametrize(
+    "policy,expected_terminal,expected_source",
+    [("reject", "reject", "failure_policy"), ("skip", "skip", "failure_policy")],
+)
+def test_failure_policies_reconcile_failed_candidates(
+    tmp_path: Path, policy: str, expected_terminal: str, expected_source: str
+) -> None:
+    asyncio.run(
+        _assert_failure_policies_reconcile_failed_candidates(
+            tmp_path, policy, expected_terminal, expected_source
+        )
+    )
+
+
+async def _assert_failure_policies_reconcile_failed_candidates(
+    tmp_path: Path, policy: str, expected_terminal: str, expected_source: str
+) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = MockJevClient(MockConfig(steps={"c": ("500",)}))
+    runner = _runner(client, store, experiment_id=f"exp-policy-{policy}")
+    runner.failure_policy = policy
+    result = await runner.run((_candidate("c"),))
+
+    decision = result.decision_for("c")
+    assert decision.terminal == expected_terminal
+    assert decision.source == expected_source
+    assert result.coverage["candidates_attempted"] == 1
+    assert result.coverage["attempts_total"] == 1
+
+
+def test_fallback_policy_is_deterministic_in_multi_candidate_run(tmp_path: Path) -> None:
+    asyncio.run(_assert_fallback_policy_is_deterministic_in_multi_candidate_run(tmp_path))
+
+
+async def _assert_fallback_policy_is_deterministic_in_multi_candidate_run(tmp_path: Path) -> None:
+    candidates = tuple(_candidate(candidate_id) for candidate_id in ("accept", "reject"))
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    client = MockJevClient(MockConfig(default_steps=("timeout",)))
+    runner = JevRunner(
+        client=client,
+        store=store,
+        experiment_id="exp-fallback",
+        questions=(Question(id="q", type="box", instructions="classify"),),
+        model_id="jev-1.13.0",
+        failure_policy="fallback",
+        fallback_decider=lambda candidate: candidate.candidate_id == "accept",
+        confirmatory=True,
+    )
+    result = await runner.run(candidates)
+
+    assert [result.decision_for(c.candidate_id).terminal for c in candidates] == [
+        "accept",
+        "reject",
+    ]
+    assert result.coverage["candidates_total"] == 2
+    assert result.coverage["candidates_attempted"] == 2
+    assert result.coverage["attempts_total"] == 2
+    assert result.coverage["failure_reasons"] == {"timeout": 2}
