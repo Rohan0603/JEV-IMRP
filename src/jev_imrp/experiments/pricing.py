@@ -249,22 +249,16 @@ def aggregate_cost(
     terminal, unique_count, duplicate_count, candidate_terminal_count = _terminal_attempts(attempts)
     aggregate_input_tokens: int | None = None
     if terminal:
-        input_values: list[int] = []
-        for item in terminal:
-            if not _valid_tokens(item.input_tokens):
-                break
-            input_values.append(item.input_tokens)
-        else:
+        input_values = [item.input_tokens for item in terminal if _valid_tokens(item.input_tokens)]
+        if input_values:
             aggregate_input_tokens = sum(input_values)
 
     aggregate_output_tokens: int | None = None
     if terminal:
-        output_values: list[int] = []
-        for item in terminal:
-            if not _valid_tokens(item.output_tokens):
-                break
-            output_values.append(item.output_tokens)
-        else:
+        output_values = [
+            item.output_tokens for item in terminal if _valid_tokens(item.output_tokens)
+        ]
+        if output_values:
             aggregate_output_tokens = sum(output_values)
     if not terminal:
         if execution_mode == "mocked":
@@ -341,9 +335,16 @@ def aggregate_cost(
             )
         elif any(item.status is CostStatus.UNKNOWN for item in estimates):
             first_unknown = next(item for item in estimates if item.status is CostStatus.UNKNOWN)
+            known_total = sum(
+                (item.estimated_usd for item in estimates if item.estimated_usd is not None),
+                Decimal("0"),
+            )
+            known_estimate = (
+                known_total if any(item.estimated_usd is not None for item in estimates) else None
+            )
             estimate = CostEstimate(
-                None,
-                None,
+                known_estimate,
+                _display(known_estimate) if known_estimate is not None else None,
                 CostStatus.UNKNOWN,
                 first_unknown.reason,
                 first_unknown.mode,
