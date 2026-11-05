@@ -16,6 +16,8 @@ from jev_imrp.experiments.pricing import (
 from jev_imrp.experiments.runner import Decision, JevRunner
 from jev_imrp.models.jev_client import CONFIRMATORY_MODEL_ID, Attempt
 
+_DEFAULT_RETURNED_MODEL = object()
+
 
 def attempt(
     *,
@@ -27,6 +29,7 @@ def attempt(
     output_tokens: int | None = 10,
     failure_reason: str | None = None,
     model_id: str = CONFIRMATORY_MODEL_ID,
+    returned_model_id: str | object | None = _DEFAULT_RETURNED_MODEL,
     http_status: int | None = None,
 ) -> Attempt:
     return Attempt(
@@ -41,7 +44,9 @@ def attempt(
         question_ids=("q",),
         attempted_at_utc="2026-11-05T00:00:00+00:00",
         retry_count=retry_count,
-        returned_model_id=model_id,
+        returned_model_id=(
+            model_id if returned_model_id is _DEFAULT_RETURNED_MODEL else returned_model_id
+        ),  # type: ignore[arg-type]
         http_status=http_status
         if http_status is not None
         else (200 if failure_reason is None else 529),
@@ -99,6 +104,13 @@ def test_mocked_run_is_labeled_local_zero_not_provider_billing() -> None:
 @pytest.mark.parametrize("model_id", ["jev-other", "jev-latest"])
 def test_unknown_model_is_not_priced(model_id: str) -> None:
     estimate = estimate_attempt_cost(attempt(model_id=model_id))
+
+    assert estimate.status is CostStatus.UNKNOWN
+    assert estimate.reason == "unknown_model"
+
+
+def test_missing_returned_model_id_is_not_priced() -> None:
+    estimate = estimate_attempt_cost(attempt(returned_model_id=None))
 
     assert estimate.status is CostStatus.UNKNOWN
     assert estimate.reason == "unknown_model"
@@ -239,7 +251,10 @@ def test_runner_result_carries_persisted_cost_report(tmp_path) -> None:
     runner = SimpleNamespace(
         store=store,
         experiment_id="exp",
-        client=SimpleNamespace(execution_mode="live"),
+        client=SimpleNamespace(
+            execution_mode="live",
+            config=SimpleNamespace(endpoint="api.typesafe.ai/v1/systemone"),
+        ),
         failure_policy="reject",
     )
 
@@ -251,6 +266,26 @@ def test_runner_result_carries_persisted_cost_report(tmp_path) -> None:
 
     assert result.cost_report.estimated_usd == Decimal("0.000042")
     assert result.to_record()["cost_report"]["pricing_source_updated"] == "2026-11-03"
+
+
+def test_runner_without_verified_live_endpoint_is_unknown(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(attempt(input_tokens=1_000_000))
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="exp",
+        client=SimpleNamespace(execution_mode="live"),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "accept", "jev", attempt_id="exp:candidate:a00"),),
+        {},
+    )
+
+    assert result.cost_report.status is CostStatus.UNKNOWN
+    assert result.cost_report.reason == "unknown_route"
 
 
 def test_runner_cost_report_ignores_attempts_from_other_experiments(tmp_path) -> None:
@@ -322,3 +357,14 @@ def test_custom_endpoint_route_label_redacts_credentials_and_query() -> None:
     assert record["route"] == "https://proxy.example/v1/systemone"
     assert "password" not in str(record)
     assert "secret" not in str(record)
+
+
+def test_schemeless_route_label_redacts_userinfo() -> None:
+    report = aggregate_cost(
+        [attempt(input_tokens=1_000)],
+        route="user:password@proxy.example/v1/systemone?token=secret",
+    )
+
+    assert "password" not in str(report.to_record())
+    assert "secret" not in str(report.to_record())
+    assert report.route == "proxy.example/v1/systemone"

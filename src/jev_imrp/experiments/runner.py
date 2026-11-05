@@ -451,10 +451,9 @@ class JevRunner:
         )
         artifacts = {**artifact_paths, "attempts": str(self.store.path)}
         endpoint = getattr(getattr(self.client, "config", None), "endpoint", None)
-        cost_report = (
-            aggregate_cost(attempts, route=endpoint, execution_mode=self.client.execution_mode)
-            if isinstance(endpoint, str)
-            else aggregate_cost(attempts, execution_mode=self.client.execution_mode)
+        route = endpoint if isinstance(endpoint, str) else ""
+        cost_report = aggregate_cost(
+            attempts, route=route, execution_mode=self.client.execution_mode
         )
         return JevRunResult(
             experiment_id=self.experiment_id,

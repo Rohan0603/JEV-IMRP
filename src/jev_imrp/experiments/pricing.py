@@ -127,7 +127,9 @@ def _safe_route_label(route: str) -> str:
     """Keep persisted route labels free of URL credentials and query secrets."""
     parts = urlsplit(route)
     if not parts.scheme or not parts.netloc:
-        return route.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+        parts = urlsplit("//" + route.split("?", 1)[0].split("#", 1)[0])
+        if not parts.netloc:
+            return route.split("?", 1)[0].split("#", 1)[0].rstrip("/")
     try:
         host = parts.hostname or ""
         if ":" in host and not host.startswith("["):
@@ -136,7 +138,9 @@ def _safe_route_label(route: str) -> str:
             host = f"{host}:{parts.port}"
     except ValueError:
         return "<redacted-invalid-route>"
-    return urlunsplit((parts.scheme, host, parts.path.rstrip("/"), "", ""))
+    if parts.scheme:
+        return urlunsplit((parts.scheme, host, parts.path.rstrip("/"), "", ""))
+    return f"{host}{parts.path.rstrip('/')}"
 
 
 def _valid_tokens(value: object) -> TypeGuard[int]:
@@ -184,9 +188,9 @@ def estimate_attempt_cost(
         return CostEstimate(
             None, None, CostStatus.UNKNOWN, "unknown_route", output_cost_usd=None, **base
         )
-    if attempt.requested_model_id != snapshot.model_id or attempt.returned_model_id not in (
-        None,
-        snapshot.model_id,
+    if (
+        attempt.requested_model_id != snapshot.model_id
+        or attempt.returned_model_id != snapshot.model_id
     ):
         return CostEstimate(
             None, None, CostStatus.UNKNOWN, "unknown_model", output_cost_usd=None, **base
