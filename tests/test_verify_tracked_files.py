@@ -160,7 +160,7 @@ def test_rejects_parent_junction_replacement_during_open(tmp_path: Path) -> None
     try:
         with (
             patch.object(_MODULE.os, "open", side_effect=swap_parent_then_open),
-            pytest.raises(UnsafeTrackedPathError, match="changed during read"),
+            pytest.raises(UnsafeTrackedPathError, match="resolved outside target root"),
         ):
             tracked_file_hashes(repo)
     finally:
@@ -204,6 +204,22 @@ def test_rejects_open_permission_failure(tmp_path: Path) -> None:
     with (
         patch.object(_MODULE.os, "open", side_effect=PermissionError("denied")),
         pytest.raises(UnsafeTrackedPathError, match="safely open"),
+    ):
+        tracked_file_hashes(repo)
+
+
+def test_rejects_open_handle_that_resolves_outside_root(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init_repo(repo)
+    tracked = repo / "tracked.txt"
+    tracked.write_text("present", encoding="utf-8")
+    git(repo, "add", "tracked.txt")
+    outside = tmp_path / "outside.txt"
+
+    with (
+        patch.object(_MODULE, "_final_handle_path", return_value=outside),
+        pytest.raises(UnsafeTrackedPathError, match="outside target root"),
     ):
         tracked_file_hashes(repo)
 

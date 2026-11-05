@@ -79,7 +79,34 @@ def _parse_index_entries(output: bytes) -> list[tuple[int, str]]:
     return entries
 
 
-def _read_regular_file(file_path: Path, path: str) -> str:
+def _final_handle_path(fd: int) -> Path | None:
+    if os.name != "nt":
+        return None
+
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_final_path = kernel32.GetFinalPathNameByHandleW
+    get_final_path.argtypes = [wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD]
+    get_final_path.restype = wintypes.DWORD
+    handle = msvcrt.get_osfhandle(fd)
+    size = 260
+    while True:
+        buffer = ctypes.create_unicode_buffer(size)
+        result = get_final_path(handle, buffer, size, 0)
+        if result == 0:
+            raise OSError(ctypes.get_last_error(), "GetFinalPathNameByHandleW failed")
+        if result < size:
+            value = buffer.value
+            if value.startswith("\\\\?\\"):
+                value = value[4:]
+            return Path(value)
+        size = result + 1
+
+
+def _read_regular_file(file_path: Path, path: str, root: Path) -> str:
     try:
         before = file_path.lstat()
     except FileNotFoundError as exc:
@@ -101,6 +128,14 @@ def _read_regular_file(file_path: Path, path: str) -> str:
         opened = os.fstat(fd)
         if not stat.S_ISREG(opened.st_mode) or _is_reparse_point(opened):
             raise UnsafeTrackedPathError(f"non-regular tracked path: {path}")
+        final_path = _final_handle_path(fd)
+        if final_path is not None:
+            try:
+                final_path.resolve(strict=False).relative_to(root.resolve(strict=False))
+            except ValueError as exc:
+                raise UnsafeTrackedPathError(
+                    f"open handle resolved outside target root: {path}"
+                ) from exc
         digest = hashlib.sha256()
         with os.fdopen(fd, "rb", closefd=True) as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -141,7 +176,7 @@ def tracked_file_hashes(root: Path = ROOT) -> dict[str, str]:
         if relative.is_absolute() or ".." in relative.parts:
             raise UnsafeTrackedPathError(f"unsafe tracked path: {path}")
         parents = _validate_parent_directories(root, relative, path)
-        hashes[path] = _read_regular_file(root / relative, path)
+        hashes[path] = _read_regular_file(root / relative, path, root)
         _validate_parent_snapshots(parents, path)
     return hashes
 
