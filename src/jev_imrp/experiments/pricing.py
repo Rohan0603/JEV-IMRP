@@ -104,6 +104,7 @@ class CostEstimate:
 class CostReport(CostEstimate):
     attempts_considered: int = 0
     attempts_counted: int = 0
+    candidate_terminal_count: int = 0
     duplicate_attempts: int = 0
 
     def to_record(self) -> dict[str, Any]:
@@ -111,6 +112,7 @@ class CostReport(CostEstimate):
             **super().to_record(),
             "attempts_considered": self.attempts_considered,
             "attempts_counted": self.attempts_counted,
+            "candidate_terminal_count": self.candidate_terminal_count,
             "duplicate_attempts": self.duplicate_attempts,
         }
 
@@ -219,7 +221,8 @@ def estimate_attempt_cost(
     )
 
 
-def _terminal_attempts(attempts: Iterable[Attempt]) -> tuple[list[Attempt], int, int]:
+def _terminal_attempts(attempts: Iterable[Attempt]) -> tuple[list[Attempt], int, int, int]:
+    """Deduplicate replayed rows but retain every upstream invocation for billing."""
     unique: dict[str, Attempt] = {}
     duplicate_count = 0
     for item in attempts:
@@ -227,15 +230,8 @@ def _terminal_attempts(attempts: Iterable[Attempt]) -> tuple[list[Attempt], int,
             duplicate_count += 1
             continue
         unique[item.attempt_id] = item
-    by_candidate: dict[str, Attempt] = {}
-    for item in unique.values():
-        prior = by_candidate.get(item.candidate_id)
-        if prior is None or (item.retry_count, item.attempt_id) > (
-            prior.retry_count,
-            prior.attempt_id,
-        ):
-            by_candidate[item.candidate_id] = item
-    return list(by_candidate.values()), len(unique), duplicate_count
+    candidate_terminal_count = len({item.candidate_id for item in unique.values()})
+    return list(unique.values()), len(unique), duplicate_count, candidate_terminal_count
 
 
 def aggregate_cost(
@@ -245,7 +241,7 @@ def aggregate_cost(
     snapshot: PricingSnapshot = DEFAULT_PRICING_SNAPSHOT,
 ) -> CostReport:
     """Aggregate terminal attempts without per-attempt display rounding."""
-    terminal, unique_count, duplicate_count = _terminal_attempts(attempts)
+    terminal, unique_count, duplicate_count, candidate_terminal_count = _terminal_attempts(attempts)
     aggregate_input_tokens: int | None = None
     if terminal:
         input_values: list[int] = []
@@ -356,6 +352,7 @@ def aggregate_cost(
         **estimate.__dict__,
         attempts_considered=unique_count + duplicate_count,
         attempts_counted=len(terminal),
+        candidate_terminal_count=candidate_terminal_count,
         duplicate_attempts=duplicate_count,
     )
 

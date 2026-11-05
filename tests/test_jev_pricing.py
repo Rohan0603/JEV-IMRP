@@ -111,7 +111,7 @@ def test_unknown_route_is_not_priced() -> None:
     assert estimate.reason == "unknown_route"
 
 
-def test_retry_and_duplicate_attempts_are_counted_once() -> None:
+def test_retry_unknown_billing_and_duplicate_attempts_are_preserved() -> None:
     first = attempt(
         attempt_id="exp:candidate:a00",
         retry_count=0,
@@ -123,10 +123,26 @@ def test_retry_and_duplicate_attempts_are_counted_once() -> None:
 
     report = aggregate_cost([first, terminal, duplicate])
 
-    assert report.status is CostStatus.ESTIMATED
-    assert report.estimated_usd == Decimal("0.042")
-    assert report.attempts_counted == 1
+    assert report.status is CostStatus.UNKNOWN
+    assert report.estimated_usd is None
+    assert report.reason == "upstream_outcome_uncertain"
+    assert report.attempts_counted == 2
+    assert report.candidate_terminal_count == 1
     assert report.duplicate_attempts == 1
+
+
+def test_successful_retry_invocations_are_each_priced() -> None:
+    report = aggregate_cost(
+        [
+            attempt(attempt_id="exp:candidate:a00", retry_count=0, input_tokens=1_000_000),
+            attempt(attempt_id="exp:candidate:a01", retry_count=1, input_tokens=1_000_000),
+        ]
+    )
+
+    assert report.status is CostStatus.ESTIMATED
+    assert report.estimated_usd == Decimal("0.084")
+    assert report.attempts_counted == 2
+    assert report.candidate_terminal_count == 1
 
 
 def test_aggregate_before_display_rounding() -> None:
