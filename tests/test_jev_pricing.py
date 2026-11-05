@@ -275,3 +275,17 @@ def test_runner_cost_report_rejects_custom_live_endpoint(tmp_path) -> None:
 
     assert result.cost_report.status is CostStatus.UNKNOWN
     assert result.cost_report.reason == "unknown_route"
+
+
+def test_custom_endpoint_route_label_redacts_credentials_and_query() -> None:
+    report = aggregate_cost(
+        [attempt(input_tokens=1_000)],
+        route="https://user:password@proxy.example/v1/systemone?token=secret#fragment",
+    )
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.route == "https://proxy.example/v1/systemone"
+    record = report.to_record()
+    assert record["route"] == "https://proxy.example/v1/systemone"
+    assert "password" not in str(record)
+    assert "secret" not in str(record)

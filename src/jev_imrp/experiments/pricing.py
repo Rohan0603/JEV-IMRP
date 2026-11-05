@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from typing import Any, Final, TypeGuard
+from urllib.parse import urlsplit, urlunsplit
 
 from jev_imrp.models.jev_client import CONFIRMATORY_MODEL_ID, ENDPOINT, Attempt
 
@@ -120,6 +121,22 @@ def _canonical_route(route: str) -> str:
     return route.rstrip("/")
 
 
+def _safe_route_label(route: str) -> str:
+    """Keep persisted route labels free of URL credentials and query secrets."""
+    parts = urlsplit(route)
+    if not parts.scheme or not parts.netloc:
+        return route.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+    try:
+        host = parts.hostname or ""
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        if parts.port is not None:
+            host = f"{host}:{parts.port}"
+    except ValueError:
+        return "<redacted-invalid-route>"
+    return urlunsplit((parts.scheme, host, parts.path.rstrip("/"), "", ""))
+
+
 def _valid_tokens(value: object) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
@@ -136,6 +153,7 @@ def estimate_attempt_cost(
 ) -> CostEstimate:
     """Estimate one terminal attempt from local metadata only."""
     canonical_route = _canonical_route(route)
+    safe_route = _safe_route_label(canonical_route)
     mode_label = (
         "mocked_local_spend"
         if attempt.execution_mode == "mocked"
@@ -145,7 +163,7 @@ def estimate_attempt_cost(
         "mode": attempt.execution_mode,
         "mode_label": mode_label,
         "model_id": attempt.requested_model_id,
-        "route": canonical_route,
+        "route": safe_route,
         "input_tokens": attempt.input_tokens,
         "output_tokens": attempt.output_tokens,
         "missing_output_usage": attempt.output_tokens is None,
