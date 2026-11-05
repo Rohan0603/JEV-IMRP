@@ -191,7 +191,7 @@ def tracked_file_hashes(root: Path = ROOT) -> dict[str, str]:
         if mode != 0o100644 and mode != 0o100755:
             raise UnsafeTrackedPathError(f"unsupported tracked index mode {mode:o}: {path}")
         relative = Path(path)
-        if relative.is_absolute() or ".." in relative.parts:
+        if relative.is_absolute() or relative.drive or relative.root or ".." in relative.parts:
             raise UnsafeTrackedPathError(f"unsafe tracked path: {path}")
         parents = _validate_parent_directories(root, relative, path)
         hashes[path] = _read_regular_file(root / relative, path, root)

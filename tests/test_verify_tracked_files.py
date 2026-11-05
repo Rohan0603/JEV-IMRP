@@ -274,6 +274,16 @@ def test_handle_path_failure_closes_descriptor(tmp_path: Path) -> None:
         _MODULE.os.fstat(opened[0])
 
 
+@pytest.mark.parametrize("path", [r"\rooted.txt", r"C:relative-drive.txt"])
+def test_rejects_rooted_or_drive_qualified_index_paths(path: str, tmp_path: Path) -> None:
+    result = type("GitResult", (), {"stdout": f"100644 deadbeef\t{path}\0".encode()})()
+    with (
+        patch.object(_MODULE.subprocess, "run", return_value=result),
+        pytest.raises(UnsafeTrackedPathError, match="unsafe tracked path"),
+    ):
+        tracked_file_hashes(tmp_path)
+
+
 def test_rejects_file_swap_detected_after_read(tmp_path: Path) -> None:
     repo = init_repo(tmp_path)
     tracked = repo / "tracked.txt"
