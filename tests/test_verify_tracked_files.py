@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import importlib.util
+import subprocess
+from pathlib import Path
+
+import pytest
+
+_MODULE_SPEC = importlib.util.spec_from_file_location(
+    "verify_tracked_files", Path(__file__).parents[1] / "scripts" / "verify_tracked_files.py"
+)
+assert _MODULE_SPEC and _MODULE_SPEC.loader
+_MODULE = importlib.util.module_from_spec(_MODULE_SPEC)
+_MODULE_SPEC.loader.exec_module(_MODULE)
+UnsafeTrackedPathError = _MODULE.UnsafeTrackedPathError
+tracked_file_hashes = _MODULE.tracked_file_hashes
+
+
+def git(cwd: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+
+def init_repo(tmp_path: Path) -> Path:
+    git(tmp_path, "init", "--quiet")
+    git(tmp_path, "config", "user.email", "test@example.invalid")
+    git(tmp_path, "config", "user.name", "Test")
+    return tmp_path
+
+
+def test_hashes_tracked_regular_file(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    (repo / "tracked.txt").write_bytes(b"safe")
+    git(repo, "add", "tracked.txt")
+
+    hashes = tracked_file_hashes(repo)
+
+    assert "tracked.txt" in hashes
+
+
+def test_rejects_tracked_symlink_without_reading_target(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init_repo(repo)
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_bytes(b"synthetic secret")
+    link = repo / "linked.txt"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable: {exc}")
+    git(repo, "add", "linked.txt")
+
+    with pytest.raises(UnsafeTrackedPathError, match="symlink"):
+        tracked_file_hashes(repo)
+
+
+def test_rejects_missing_tracked_path(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    (repo / "missing.txt").write_text("present", encoding="utf-8")
+    git(repo, "add", "missing.txt")
+    (repo / "missing.txt").unlink()
+
+    with pytest.raises(UnsafeTrackedPathError, match="missing"):
+        tracked_file_hashes(repo)
+
+
+def test_rejects_tracked_directory_path(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path)
+    tracked = repo / "tracked.txt"
+    tracked.write_text("present", encoding="utf-8")
+    git(repo, "add", "tracked.txt")
+    tracked.unlink()
+    tracked.mkdir()
+
+    with pytest.raises(UnsafeTrackedPathError, match="non-regular"):
+        tracked_file_hashes(repo)
