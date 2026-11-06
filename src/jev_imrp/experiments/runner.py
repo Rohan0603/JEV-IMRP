@@ -232,6 +232,8 @@ class JevRunner:
             raise ValueError(f"unknown failure policy: {failure_policy!r}")
         if not questions:
             raise ValueError("a run needs at least one question")
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be positive")
         check_model_id(model_id, confirmatory=confirmatory)
         self.client = client
         self.store = store
@@ -456,7 +458,10 @@ class JevRunner:
             attempt for attempt in attempts if attempt.execution_mode == self.client.execution_mode
         ]
         cost_report = aggregate_cost(
-            pricing_attempts, route=route, execution_mode=self.client.execution_mode
+            pricing_attempts,
+            route=route,
+            execution_mode=self.client.execution_mode,
+            terminal_candidate_ids=(decision.candidate_id for decision in decisions),
         )
         return JevRunResult(
             experiment_id=self.experiment_id,

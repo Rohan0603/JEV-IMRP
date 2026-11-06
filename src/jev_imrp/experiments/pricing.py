@@ -249,8 +249,18 @@ def estimate_attempt_cost(
     )
 
 
-def _terminal_attempts(attempts: Iterable[Attempt]) -> tuple[list[Attempt], int, int, int]:
-    """Deduplicate replayed rows but retain every upstream invocation for billing."""
+def _terminal_attempts(
+    attempts: Iterable[Attempt],
+    *,
+    terminal_candidate_ids: Iterable[str] | None = None,
+) -> tuple[list[Attempt], int, int, int]:
+    """Deduplicate replayed rows but retain every upstream invocation for billing.
+
+    A failed/aborted attempt is not itself evidence that the candidate reached a
+    terminal decision. The runner supplies decision candidate IDs when available;
+    direct pricing callers conservatively count only candidates with a successful
+    attempt.
+    """
     unique: dict[str, Attempt] = {}
     duplicate_count = 0
     for item in attempts:
@@ -258,7 +268,13 @@ def _terminal_attempts(attempts: Iterable[Attempt]) -> tuple[list[Attempt], int,
             duplicate_count += 1
             continue
         unique[item.attempt_id] = item
-    candidate_terminal_count = len({item.candidate_id for item in unique.values()})
+    candidate_ids = {item.candidate_id for item in unique.values()}
+    if terminal_candidate_ids is None:
+        candidate_terminal_count = len(
+            {item.candidate_id for item in unique.values() if item.failure_reason is None}
+        )
+    else:
+        candidate_terminal_count = len(set(terminal_candidate_ids) & candidate_ids)
     return list(unique.values()), len(unique), duplicate_count, candidate_terminal_count
 
 
@@ -268,9 +284,13 @@ def aggregate_cost(
     route: str = JEV_ROUTE,
     snapshot: PricingSnapshot = DEFAULT_PRICING_SNAPSHOT,
     execution_mode: str | None = None,
+    terminal_candidate_ids: Iterable[str] | None = None,
 ) -> CostReport:
     """Aggregate terminal attempts without per-attempt display rounding."""
-    terminal, unique_count, duplicate_count, candidate_terminal_count = _terminal_attempts(attempts)
+    terminal, unique_count, duplicate_count, candidate_terminal_count = _terminal_attempts(
+        attempts,
+        terminal_candidate_ids=terminal_candidate_ids,
+    )
     aggregate_input_tokens: int | None = None
     if terminal:
         input_values = [item.input_tokens for item in terminal if _valid_tokens(item.input_tokens)]
