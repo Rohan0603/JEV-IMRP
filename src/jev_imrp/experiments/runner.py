@@ -232,6 +232,8 @@ class JevRunner:
             raise ValueError(f"unknown failure policy: {failure_policy!r}")
         if not questions:
             raise ValueError("a run needs at least one question")
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be positive")
         check_model_id(model_id, confirmatory=confirmatory)
         self.client = client
         self.store = store
