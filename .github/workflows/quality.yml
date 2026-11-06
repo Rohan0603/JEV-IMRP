@@ -1,0 +1,54 @@
+name: JEV-IMRP quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-imrp-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+
+      - name: Install project and pinned development tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Check ORC-268 quality surface when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/jev_imrp/experiments/__init__.py
+            src/jev_imrp/experiments/pricing.py
+            src/jev_imrp/experiments/runner.py
+            src/jev_imrp/models/jev_client.py
+            tests/test_jev_pricing.py
+          )
+          if [[ -f "${files[1]}" && -f "${files[4]}" ]]; then
+            python -m ruff check "${files[@]}"
+            python -m ruff format --check "${files[@]}"
+            python -m mypy src/jev_imrp/experiments/pricing.py src/jev_imrp/experiments/runner.py
+          else
+            echo "ORC-268 pricing files are not present on this base; scoped quality checks are deferred to the pricing implementation workflow."
+          fi
