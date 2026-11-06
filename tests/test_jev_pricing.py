@@ -471,4 +471,3 @@ def test_schemeless_route_label_redacts_userinfo() -> None:
     assert "password" not in str(report.to_record())
     assert "secret" not in str(report.to_record())
     assert report.route == "proxy.example/v1/systemone"
-
