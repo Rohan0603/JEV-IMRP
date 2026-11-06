@@ -33,3 +33,22 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+      - name: Check ORC-268 quality surface when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/jev_imrp/experiments/__init__.py
+            src/jev_imrp/experiments/pricing.py
+            src/jev_imrp/experiments/runner.py
+            src/jev_imrp/models/jev_client.py
+            tests/test_jev_pricing.py
+          )
+          if [[ -f "${files[1]}" && -f "${files[4]}" ]]; then
+            python -m ruff check "${files[@]}"
+            python -m ruff format --check "${files[@]}"
+            python -m mypy src/jev_imrp/experiments/pricing.py src/jev_imrp/experiments/runner.py
+          else
+            echo "ORC-268 pricing files are not present on this base; scoped quality checks are deferred to the pricing implementation workflow."
+          fi
