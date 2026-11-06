@@ -30,6 +30,7 @@ from jev_imrp.common.logging import get_logger
 from jev_imrp.common.timeutils import utc_now
 from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.manifest import RunStatus
+from jev_imrp.experiments.pricing import CostReport, aggregate_cost
 from jev_imrp.models.jev_client import (
     Attempt,
     CallResult,
@@ -108,6 +109,7 @@ class JevRunResult:
     decisions: tuple[Decision, ...]
     coverage: dict[str, Any]
     artifact_paths: dict[str, str]
+    cost_report: CostReport
     failures: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
 
@@ -123,6 +125,7 @@ class JevRunResult:
             "decisions": [d.to_record() for d in self.decisions],
             "coverage": dict(self.coverage),
             "artifact_paths": dict(self.artifact_paths),
+            "cost_report": self.cost_report.to_record(),
             "failures": list(self.failures),
             "warnings": list(self.warnings),
         }
@@ -406,7 +409,11 @@ class JevRunner:
     def _summarise(
         self, decisions: tuple[Decision, ...], artifact_paths: dict[str, str]
     ) -> JevRunResult:
-        attempts = self.store.attempts()
+        attempts = [
+            attempt
+            for attempt in self.store.attempts()
+            if attempt.experiment_id == self.experiment_id
+        ]
         total = len(decisions)
         answered = sum(1 for d in decisions if d.source == "jev")
         failed = sum(1 for d in decisions if d.source == "failure_policy")
@@ -443,6 +450,17 @@ class JevRunner:
             else ()
         )
         artifacts = {**artifact_paths, "attempts": str(self.store.path)}
+        endpoint = getattr(getattr(self.client, "config", None), "endpoint", None)
+        route = endpoint if isinstance(endpoint, str) else ""
+        pricing_attempts = [
+            attempt for attempt in attempts if attempt.execution_mode == self.client.execution_mode
+        ]
+        cost_report = aggregate_cost(
+            pricing_attempts,
+            route=route,
+            execution_mode=self.client.execution_mode,
+            terminal_candidate_ids=(decision.candidate_id for decision in decisions),
+        )
         return JevRunResult(
             experiment_id=self.experiment_id,
             execution_mode=self.client.execution_mode,
@@ -451,6 +469,7 @@ class JevRunner:
             decisions=decisions,
             coverage=coverage,
             artifact_paths=artifacts,
+            cost_report=cost_report,
             failures=tuple(sorted(reasons)),
             warnings=warnings,
         )

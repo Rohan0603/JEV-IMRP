@@ -36,6 +36,7 @@ import math
 import os
 import time
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Final, Literal, Protocol
 
 from jev_imrp.common.errors import JevError
@@ -64,9 +65,9 @@ MAX_BODY_BYTES: Final = 32 * 1024 * 1024
 MAX_NESTING_LEVELS: Final = 64
 ACCEPTED_ENCODINGS: Final = ("gzip", "x-gzip", "zstd")
 
-#: Published pricing snapshot (USD per token) for cost reporting only. The API
-#: returns no cost field, so nothing here invents one on a stored record.
-PRICING_PER_BTOK_USD: Final = {"input": 42.0, "output": 0.042}
+#: Published pricing snapshot in USD per billion tokens for cost reporting only.
+#: The provider publishes $0.042 per million input tokens and no output charge.
+PRICING_PER_BTOK_USD: Final = {"input": Decimal("42"), "output": Decimal("0")}
 
 #: Exact model id pinned for confirmatory runs, and the aliases that must not be
 #: used there (aliases move between releases silently).
