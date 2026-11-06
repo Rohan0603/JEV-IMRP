@@ -473,4 +473,3 @@ class JevRunner:
             failures=tuple(sorted(reasons)),
             warnings=warnings,
         )
-
