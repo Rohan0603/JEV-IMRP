@@ -162,6 +162,35 @@ def test_retry_unknown_billing_and_duplicate_attempts_are_preserved() -> None:
     assert report.duplicate_attempts == 1
 
 
+def test_failed_attempt_does_not_count_as_terminal_candidate() -> None:
+    report = aggregate_cost([attempt(input_tokens=None, failure_reason="timeout")])
+
+    assert report.status is CostStatus.UNKNOWN
+    assert report.candidate_terminal_count == 0
+
+
+def test_runner_decision_ids_count_failure_policy_terminals(tmp_path) -> None:
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    store.append(attempt(input_tokens=None, failure_reason="timeout"))
+    runner = SimpleNamespace(
+        store=store,
+        experiment_id="exp",
+        client=SimpleNamespace(
+            execution_mode="live",
+            config=SimpleNamespace(endpoint="api.typesafe.ai/v1/systemone"),
+        ),
+        failure_policy="reject",
+    )
+
+    result = JevRunner._summarise(
+        runner,  # type: ignore[arg-type]
+        (Decision("candidate", "reject", "failure_policy", failure_reason="jev_failed"),),
+        {},
+    )
+
+    assert result.cost_report.candidate_terminal_count == 1
+
+
 def test_unknown_retry_preserves_known_cost_and_token_totals() -> None:
     report = aggregate_cost(
         [
@@ -442,3 +471,4 @@ def test_schemeless_route_label_redacts_userinfo() -> None:
     assert "password" not in str(report.to_record())
     assert "secret" not in str(report.to_record())
     assert report.route == "proxy.example/v1/systemone"
+
