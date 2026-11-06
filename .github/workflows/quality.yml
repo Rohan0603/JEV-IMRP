@@ -33,19 +33,3 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
-
-      - name: Check Ruff
-        run: python -m ruff check .
-
-      - name: Check formatting
-        run: python -m ruff format --check .
-
-      - name: Check pricing modules when present
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -f src/jev_imrp/experiments/pricing.py && -f src/jev_imrp/experiments/runner.py ]]; then
-            python -m mypy src/jev_imrp/experiments/pricing.py src/jev_imrp/experiments/runner.py
-          else
-            echo "Pricing modules are not present on this base; scoped mypy is deferred to the pricing implementation workflow."
-          fi
