@@ -33,3 +33,24 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+      - name: Check Ruff on the ORC-268 change surface
+        run: >-
+          python -m ruff check
+          src/jev_imrp/experiments/__init__.py
+          src/jev_imrp/experiments/pricing.py
+          src/jev_imrp/experiments/runner.py
+          src/jev_imrp/models/jev_client.py
+          tests/test_jev_pricing.py
+
+      - name: Check formatting on the ORC-268 change surface
+        run: >-
+          python -m ruff format --check
+          src/jev_imrp/experiments/__init__.py
+          src/jev_imrp/experiments/pricing.py
+          src/jev_imrp/experiments/runner.py
+          src/jev_imrp/models/jev_client.py
+          tests/test_jev_pricing.py
+
+      - name: Check the changed pricing modules
+        run: python -m mypy src/jev_imrp/experiments/pricing.py src/jev_imrp/experiments/runner.py
