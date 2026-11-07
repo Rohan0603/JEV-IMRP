@@ -22,9 +22,8 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import lru_cache
-from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +61,15 @@ def _get_credentials() -> tuple[str, str, str]:
     api_key = os.getenv("SHOONYA_API_KEY")
     api_secret = os.getenv("SHOONYA_API_SECRET")
     access_token = os.getenv("SHOONYA_ACCESS_TOKEN")
-    if not all([api_key, api_secret, access_token]):
+    if api_key is None or api_secret is None or access_token is None:
         missing = [
-            name for name, val in (
+            name
+            for name, val in (
                 ("SHOONYA_API_KEY", api_key),
                 ("SHOONYA_API_SECRET", api_secret),
                 ("SHOONYA_ACCESS_TOKEN", access_token),
-            ) if not val
+            )
+            if not val
         ]
         raise SymbolResolutionError(f"missing credentials: {missing}")
     return api_key, api_secret, access_token
@@ -84,7 +85,7 @@ def _build_checksum(client_id: str, client_secret: str, auth_code: str | None = 
     return hashlib.sha256(base.encode("utf-8")).hexdigest()
 
 
-def _form_request(jdata: dict[str, str], jkey: str, *, endpoint: str) -> urllib.Request:
+def _form_request(jdata: dict[str, str], jkey: str, *, endpoint: str) -> urllib.request.Request:
     """Build a form-urlencoded POST request with jData/jKey."""
     body = urllib.parse.urlencode({"jData": json.dumps(jdata), "jKey": jkey})
     req = urllib.request.Request(
@@ -152,8 +153,13 @@ def resolve_via_searchscrip(
             decoded = json.loads(raw_body.decode("utf-8"))
             if isinstance(decoded, dict) and decoded.get("stat") != "Ok":
                 emsg = decoded.get("emsg", "")
-                if any(code.lower() in emsg.lower() for code in retryable_codes) and attempt < max_retries - 1:
-                    logger.warning("SearchScrip rate limited or timeout on attempt %d: %s", attempt + 1, emsg)
+                if (
+                    any(code.lower() in emsg.lower() for code in retryable_codes)
+                    and attempt < max_retries - 1
+                ):
+                    logger.warning(
+                        "SearchScrip rate limited or timeout on attempt %d: %s", attempt + 1, emsg
+                    )
                     continue
 
             data = _parse_response(raw_body)
@@ -163,13 +169,16 @@ def resolve_via_searchscrip(
                 logger.warning("SearchScrip HTTP error on attempt %d: %s", attempt + 1, exc)
                 continue
             raise SymbolResolutionError(f"SearchScrip HTTP error: {exc}") from exc
-        except urllib.request.URLError as exc:
+        except urllib.error.URLError as exc:
             if attempt < max_retries - 1:
                 logger.warning("SearchScrip URL error on attempt %d: %s", attempt + 1, exc)
                 continue
             raise SymbolResolutionError(f"SearchScrip URL error: {exc}") from exc
         except SymbolResolutionError as exc:
-            if any(code.lower() in str(exc).lower() for code in retryable_codes) and attempt < max_retries - 1:
+            if (
+                any(code.lower() in str(exc).lower() for code in retryable_codes)
+                and attempt < max_retries - 1
+            ):
                 logger.warning("SearchScrip resolution error on attempt %d: %s", attempt + 1, exc)
                 continue
             raise
@@ -182,10 +191,7 @@ def resolve_via_searchscrip(
         raise SymbolResolutionError(f"unexpected scrips format: {type(scrips).__name__}")
 
     # Exact match on SYMBOL-EQ form; reject fuzzy results.
-    exact_matches = [
-        s for s in scrips
-        if isinstance(s, dict) and s.get("tsym") == symbol
-    ]
+    exact_matches = [s for s in scrips if isinstance(s, dict) and s.get("tsym") == symbol]
 
     if not exact_matches:
         # Log what was returned so operators can diagnose fuzzy-match issues.
@@ -231,6 +237,7 @@ def _is_retryable_http(exc: urllib.error.HTTPError, retryable_codes: frozenset[s
 # Symbol master (preferred: no auth, no rate limit, deterministic)
 # ---------------------------------------------------------------------------
 
+
 def fetch_symbol_master_url(exchange: str) -> str:
     """Return the URL for an exchange's symbol master ZIP.
 
@@ -262,15 +269,18 @@ def resolve_via_master(
 
     # Check if the exchange master is cached
     if master_cache is not None and exchange in master_cache:
-        exchange_map = master_cache[exchange]
-        token = exchange_map.get(symbol)
-        if token is None:
-            raise SymbolResolutionError(
-                f"symbol '{symbol}' not found in {exchange} symbol master"
-            )
+        cached_exchange_map = master_cache[exchange]
+        cached_token = cached_exchange_map.get(symbol)
+        if cached_token is None:
+            raise SymbolResolutionError(f"symbol '{symbol}' not found in {exchange} symbol master")
         if master_cache is not None:
-            _master_resolved_cache[(exchange, symbol)] = token
-        return ResolvedToken(exchange=exchange, token=token, symbol=symbol, instrument_name=symbol)
+            _master_resolved_cache[(exchange, symbol)] = cached_token
+        return ResolvedToken(
+            exchange=exchange,
+            token=cached_token,
+            symbol=symbol,
+            instrument_name=symbol,
+        )
 
     # Download and parse the master (research-only; real implementation would
     # cache the parsed CSV per exchange).
@@ -279,43 +289,49 @@ def resolve_via_master(
         with urllib.request.urlopen(url, timeout=60) as response:
             raw = response.read()
     except urllib.error.HTTPError as exc:
-        raise SymbolResolutionError(f"failed to download symbol master for {exchange}: {exc}") from exc
-    except urllib.request.URLError as exc:
-        raise SymbolResolutionError(f"network error downloading symbol master for {exchange}: {exc}") from exc
+        raise SymbolResolutionError(
+            f"failed to download symbol master for {exchange}: {exc}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise SymbolResolutionError(
+            f"network error downloading symbol master for {exchange}: {exc}"
+        ) from exc
 
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
-            txt_name = [n for n in zf.namelist() if n.endswith(".txt")][0]
+            txt_name = next(n for n in zf.namelist() if n.endswith(".txt"))
             with zf.open(txt_name) as f:
                 content = f.read().decode("utf-8")
     except Exception as exc:
-        raise SymbolResolutionError(f"failed to parse symbol master ZIP for {exchange}: {exc}") from exc
+        raise SymbolResolutionError(
+            f"failed to parse symbol master ZIP for {exchange}: {exc}"
+        ) from exc
 
     # Parse the CSV. The live master is comma-delimited with columns
     # Exchange,Token,LotSize,Symbol,TradingSymbol,Instrument,TickSize,...
     # The trading symbol (e.g. SBIN-EQ) lives in TradingSymbol.
     reader = csv.DictReader(io.StringIO(content), delimiter=",")
-    exchange_map: dict[str, str] = {}
+    downloaded_exchange_map: dict[str, str] = {}
     for row in reader:
-        sym = (
-            row.get("TradingSymbol")
-            or row.get("tsym")
-            or row.get("symbol")
-            or row.get("SYMBOL")
-        )
+        sym = row.get("TradingSymbol") or row.get("tsym") or row.get("symbol") or row.get("SYMBOL")
         tok = row.get("Token") or row.get("token") or row.get("TOKEN")
         if sym and tok:
-            exchange_map[sym.strip()] = str(tok).strip()
+            downloaded_exchange_map[str(sym).strip()] = str(tok).strip()
 
-    token = exchange_map.get(symbol)
-    if token is None:
+    downloaded_token = downloaded_exchange_map.get(symbol)
+    if downloaded_token is None:
         raise SymbolResolutionError(f"symbol '{symbol}' not found in {exchange} symbol master")
 
     if master_cache is not None:
-        master_cache[exchange] = exchange_map
-        _master_resolved_cache[(exchange, symbol)] = token
+        master_cache[exchange] = downloaded_exchange_map
+        _master_resolved_cache[(exchange, symbol)] = downloaded_token
 
-    return ResolvedToken(exchange=exchange, token=token, symbol=symbol, instrument_name=symbol)
+    return ResolvedToken(
+        exchange=exchange,
+        token=downloaded_token,
+        symbol=symbol,
+        instrument_name=symbol,
+    )
 
 
 #: Cache for resolved tokens from symbol masters.
@@ -342,8 +358,12 @@ def resolve_symbol(
         try:
             return resolve_via_master(exchange, symbol, master_cache=master_cache)
         except SymbolResolutionError as exc:
-            logger.info("symbol master resolution failed for %s|%s: %s — falling back to SearchScrip",
-                        exchange, symbol, exc)
+            logger.info(
+                "symbol master resolution failed for %s|%s: %s — falling back to SearchScrip",
+                exchange,
+                symbol,
+                exc,
+            )
 
     if user_id is None:
         raise SymbolResolutionError(
@@ -377,7 +397,7 @@ __all__ = [
     "ResolvedToken",
     "SymbolResolutionError",
     "resolve_symbol",
+    "resolve_symbols_batch",
     "resolve_via_master",
     "resolve_via_searchscrip",
-    "resolve_symbols_batch",
 ]

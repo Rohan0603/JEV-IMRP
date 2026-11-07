@@ -151,9 +151,13 @@ def test_every_secondary_horizon_labels_from_the_same_stream(config: LabelerConf
     quotes = _quotes()
     for horizon in config.horizons_minutes:
         record = label_candidate(
-            symbol="SYNTHETIC", position_side="long", quantity=100,
-            decision_time=from_ist(day, time(9, 30)), horizon_minutes=horizon,
-            quotes=quotes, config=config,
+            symbol="SYNTHETIC",
+            position_side="long",
+            quantity=100,
+            decision_time=from_ist(day, time(9, 30)),
+            horizon_minutes=horizon,
+            quotes=quotes,
+            config=config,
         )
         assert record.status is LabelStatus.LABELLED, horizon
         span = record.label_interval_end - record.label_interval_start  # type: ignore[operator]
@@ -180,9 +184,13 @@ def test_data_gap_produces_no_label(config: LabelerConfig) -> None:
 def test_missing_quote_at_entry_is_not_labelled(config: LabelerConfig) -> None:
     day = datetime.fromisoformat(FIXTURE["session_date"]).date()
     record = label_candidate(
-        symbol="SYNTHETIC", position_side="long", quantity=100,
-        decision_time=from_ist(day, time(9, 30)), horizon_minutes=30,
-        quotes=[], config=config,
+        symbol="SYNTHETIC",
+        position_side="long",
+        quantity=100,
+        decision_time=from_ist(day, time(9, 30)),
+        horizon_minutes=30,
+        quotes=[],
+        config=config,
     )
     assert record.reason is UnlabelledReason.ENTRY_UNFILLABLE
     assert record.net_pnl_inr is None
@@ -218,9 +226,13 @@ def test_stale_quote_policy_is_shared_by_labels_and_fills(config: LabelerConfig)
         schedule=config.schedule,
     )
     record = label_candidate(
-        symbol="SYNTHETIC", position_side="long", quantity=100,
+        symbol="SYNTHETIC",
+        position_side="long",
+        quantity=100,
         decision_time=datetime.fromisoformat(FIXTURE["cases"][0]["decision_time"]),
-        horizon_minutes=30, quotes=_quotes(), config=strict,
+        horizon_minutes=30,
+        quotes=_quotes(),
+        config=strict,
     )
     assert record.status is LabelStatus.UNLABELLED
     assert record.entry_fill is not None and record.entry_fill.price is None
@@ -229,14 +241,19 @@ def test_stale_quote_policy_is_shared_by_labels_and_fills(config: LabelerConfig)
 def test_slippage_is_charged_separately_from_statutory_fees(config: LabelerConfig) -> None:
     case = _cases()[0]
     stressed = LabelerConfig(
-        policy=config.policy, schedule=config.schedule,
+        policy=config.policy,
+        schedule=config.schedule,
         slippage=SlippageScenario(name="stress_1", slippage_bps_per_leg=Decimal(10)),
     )
     base_record = _label(case, config)
     stress_record = label_candidate(
-        symbol="SYNTHETIC", position_side=case["position_side"], quantity=case["quantity"],
+        symbol="SYNTHETIC",
+        position_side=case["position_side"],
+        quantity=case["quantity"],
         decision_time=datetime.fromisoformat(case["decision_time"]),
-        horizon_minutes=case["horizon_minutes"], quotes=_quotes(), config=stressed,
+        horizon_minutes=case["horizon_minutes"],
+        quotes=_quotes(),
+        config=stressed,
     )
     assert stress_record.entry_fees == base_record.entry_fees
     assert stress_record.exit_fees == base_record.exit_fees
@@ -266,8 +283,12 @@ def test_session_bounds_use_ist(config: LabelerConfig) -> None:
     day = datetime.fromisoformat(FIXTURE["session_date"]).date()
     assert from_ist(day, time(9, 15)).utcoffset() == timedelta(hours=5, minutes=30)
     record = label_candidate(
-        symbol="SYNTHETIC", position_side="long", quantity=100,
-        decision_time=from_ist(day, time(15, 29)), horizon_minutes=5,
-        quotes=_quotes(), config=config,
+        symbol="SYNTHETIC",
+        position_side="long",
+        quantity=100,
+        decision_time=from_ist(day, time(15, 29)),
+        horizon_minutes=5,
+        quotes=_quotes(),
+        config=config,
     )
     assert record.status is LabelStatus.UNLABELLED  # 15:29 + 5 minutes leaves the session

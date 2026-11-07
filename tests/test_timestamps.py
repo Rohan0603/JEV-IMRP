@@ -89,8 +89,13 @@ def test_feed_timestamp_parsed_from_epoch_seconds_and_never_defaulted():
 def test_feed_and_receive_time_are_independent_columns(tmp_path):
     fixture = load_fixture("session_normal")
     writer = RawEventWriter(tmp_path / "raw", session_id="synthetic")
-    recorder = Recorder(writer=writer, book=QuoteStateBook(tick_sizes=tick_sizes(fixture)),
-                        session_id="synthetic", clock=FixedClock(), data_origin="synthetic")
+    recorder = Recorder(
+        writer=writer,
+        book=QuoteStateBook(tick_sizes=tick_sizes(fixture)),
+        session_id="synthetic",
+        clock=FixedClock(),
+        data_origin="synthetic",
+    )
     recorder.start()
     event, state = recorder.feed(fixture["messages"][1])
     recorder.close()
@@ -311,5 +316,3 @@ def test_health_report_includes_bar_gaps():
     assert report.minutes_since_previous_bar_total == 1
     assert report.bars_missing_price == 0
     assert report.thresholds["max_quote_age_ms"] == 5_000.0
-
-

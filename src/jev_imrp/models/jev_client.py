@@ -36,6 +36,7 @@ import math
 import os
 import time
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Final, Literal, Protocol
 
 from jev_imrp.common.errors import JevError
@@ -64,9 +65,9 @@ MAX_BODY_BYTES: Final = 32 * 1024 * 1024
 MAX_NESTING_LEVELS: Final = 64
 ACCEPTED_ENCODINGS: Final = ("gzip", "x-gzip", "zstd")
 
-#: Published pricing snapshot (USD per token) for cost reporting only. The API
-#: returns no cost field, so nothing here invents one on a stored record.
-PRICING_PER_BTOK_USD: Final = {"input": 42.0, "output": 0.042}
+#: Published pricing snapshot in USD per billion tokens for cost reporting only.
+#: The provider publishes $0.042 per million input tokens and no output charge.
+PRICING_PER_BTOK_USD: Final = {"input": Decimal("42"), "output": Decimal("0")}
 
 #: Exact model id pinned for confirmatory runs, and the aliases that must not be
 #: used there (aliases move between releases silently).
@@ -679,11 +680,21 @@ class RetryPolicy:
     max_delay_s: float = 30.0
     status_codes: tuple[int, ...] = (429, 529)
 
+    def __post_init__(self) -> None:
+        if self.max_retries < 0:
+            raise ValueError("max_retries must be non-negative")
+        if self.base_delay_s < 0 or self.max_delay_s < 0:
+            raise ValueError("retry delays must be non-negative")
+        if self.max_delay_s < self.base_delay_s:
+            raise ValueError("max_delay_s must be at least base_delay_s")
+        if not self.status_codes or any(status not in (429, 529) for status in self.status_codes):
+            raise ValueError("retry status codes may only contain 429 and 529")
+
     def delay_for(self, retry_count: int, retry_after: str | None = None) -> float:
         """Exponential backoff, honouring ``retry-after`` when the server sends it."""
         if retry_after:
             try:
-                return float(min(float(retry_after), self.max_delay_s))
+                return float(max(0.0, min(float(retry_after), self.max_delay_s)))
             except ValueError:
                 pass
         return float(min(self.base_delay_s * (2 ** (retry_count - 1)), self.max_delay_s))
@@ -702,6 +713,14 @@ class LiveConfig:
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     #: Injectable sleep, so the rate limiter is testable without real waiting.
     sleep: Any = None
+
+    def __post_init__(self) -> None:
+        if self.timeout_s <= 0:
+            raise ValueError("timeout_s must be positive")
+        if self.max_concurrency <= 0:
+            raise ValueError("max_concurrency must be positive")
+        if self.min_interval_s < 0:
+            raise ValueError("min_interval_s must be non-negative")
 
 
 def check_model_id(model_id: str, *, confirmatory: bool) -> None:

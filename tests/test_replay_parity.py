@@ -237,5 +237,3 @@ def test_replay_without_master_tick_sizes_is_still_deterministic(tmp_path):
         assert a.last_price == b.last_price
         assert a.bid_price_1 == b.bid_price_1
         assert a.ask_qty_1 == b.ask_qty_1
-
-

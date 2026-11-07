@@ -47,8 +47,9 @@ def ist_session_date(value: datetime) -> date:
     return to_ist(value).date()
 
 
-def is_within_session(value: datetime, clock_open: time = SESSION_OPEN,
-                      clock_close: time = SESSION_CLOSE) -> bool:
+def is_within_session(
+    value: datetime, clock_open: time = SESSION_OPEN, clock_close: time = SESSION_CLOSE
+) -> bool:
     """True when the timestamp falls inside the IST continuous session."""
     local = to_ist(value)
     return clock_open <= local.timetz().replace(tzinfo=None) <= clock_close

@@ -16,18 +16,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
-from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import websockets
+from websockets.asyncio.client import ClientConnection
 
 from jev_imrp.ingest.shoonya_recorder import Recorder
-from jev_imrp.ingest.symbol_resolver import resolve_symbol, SymbolResolutionError
+from jev_imrp.ingest.symbol_resolver import SymbolResolutionError, resolve_symbol
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ShoonyaFeedClient:
     """WebSocket client for Shoonya market data feed."""
@@ -57,11 +57,11 @@ class ShoonyaFeedClient:
         self.access_token = access_token
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnect_delay = reconnect_delay
-        self.subscriptions: Dict[str, str] = {}  # exchange|token -> symbol
-        self.token_cache: Dict[str, str] = {}  # symbol -> token
-        self.connection: Optional[websockets.WebSocketClientProtocol] = None
+        self.subscriptions: dict[str, str] = {}  # exchange|token -> symbol
+        self.token_cache: dict[str, str] = {}  # symbol -> token
+        self.connection: ClientConnection | None = None
         self.running = False
-        self.task: Optional[asyncio.Task] = None
+        self.task: asyncio.Task[Any] | None = None
 
     async def connect(self) -> None:
         """Establish WebSocket connection to Shoonya."""
@@ -78,7 +78,7 @@ class ShoonyaFeedClient:
             # Re-raise to be caught by the run method for reconnection logic
             raise
 
-    async def _handle_connection(self, ws: websockets.WebSocketClientProtocol) -> None:
+    async def _handle_connection(self, ws: ClientConnection) -> None:
         """Handle WebSocket connection lifecycle."""
         try:
             # Send connect frame
@@ -112,7 +112,7 @@ class ShoonyaFeedClient:
             # Re-raise to trigger reconnection in run method
             raise
 
-    async def _process_message(self, payload: Dict[str, Any]) -> None:
+    async def _process_message(self, payload: dict[str, Any]) -> None:
         """Process incoming WebSocket message."""
         message_type = payload.get("t")
 
@@ -135,7 +135,7 @@ class ShoonyaFeedClient:
             # Unknown message type
             logger.warning(f"Unknown message type: {message_type}")
 
-    async def subscribe(self, instruments: List[Tuple[str, str]]) -> None:
+    async def subscribe(self, instruments: list[tuple[str, str]]) -> None:
         """Subscribe to instruments.
 
         Args:
@@ -171,7 +171,7 @@ class ShoonyaFeedClient:
         except Exception as e:
             logger.error(f"Failed to subscribe: {e}")
 
-    async def _resolve_symbol_to_token(self, exchange: str, symbol: str) -> Optional[str]:
+    async def _resolve_symbol_to_token(self, exchange: str, symbol: str) -> str | None:
         """Resolve symbol to token using the Shoonya REST API.
 
         Args:
@@ -191,7 +191,7 @@ class ShoonyaFeedClient:
                 exchange=exchange,
                 symbol=symbol,
                 use_master=True,  # Prefer symbol master
-                user_id=self.user_id # Pass user_id for fallback
+                user_id=self.user_id,  # Pass user_id for fallback
             )
             token = resolved_token.token
         except SymbolResolutionError as e:
@@ -203,7 +203,7 @@ class ShoonyaFeedClient:
             self.token_cache[symbol] = token
         return token
 
-    async def unsubscribe(self, instruments: List[Tuple[str, str]]) -> None:
+    async def unsubscribe(self, instruments: list[tuple[str, str]]) -> None:
         """Unsubscribe from instruments.
 
         Args:
@@ -247,27 +247,29 @@ class ShoonyaFeedClient:
             # Cancel the task if it's running
             if not self.task.done():
                 self.task.cancel()
-                await self.task # Wait for cancellation to complete
+                await self.task  # Wait for cancellation to complete
         except asyncio.CancelledError:
-            pass # Expected when cancelling
+            pass  # Expected when cancelling
         finally:
             self.task = None
-            self.connection = None # Clear connection on stop
+            self.connection = None  # Clear connection on stop
 
     async def run(self) -> None:
         """Run the feed client with reconnection logic."""
         attempt = 0
         while self.running and attempt < self.max_reconnect_attempts:
             try:
-                await self.start() # This will create the task
-                await self.task # Wait for the connection task to complete (or fail)
+                await self.start()  # This will create the task
+                task = self.task
+                if task is not None:
+                    await task  # Wait for the connection task to complete (or fail)
                 # If task completes without error, it means connection was closed cleanly or by us
-                if self.running: # If we are still supposed to be running, it means an unexpected close
+                if (
+                    self.running
+                ):  # If we are still supposed to be running, it means an unexpected close
                     logger.warning("Connection task finished unexpectedly. Attempting reconnect.")
                     attempt += 1
                     await asyncio.sleep(self.reconnect_delay)
-                else:
-                    break # Stopped intentionally
             except Exception as e:
                 logger.error(f"Attempt {attempt + 1} failed: {e}")
                 attempt += 1
@@ -275,11 +277,12 @@ class ShoonyaFeedClient:
                     await asyncio.sleep(self.reconnect_delay)
                 else:
                     logger.error("Max reconnection attempts reached or client stopped.")
-                    self.running = False # Ensure running is false if max attempts reached
+                    self.running = False  # Ensure running is false if max attempts reached
                     break
 
         # Ensure resources are cleaned up if loop exits
         if not self.running:
             await self.stop()
+
 
 __all__ = ["ShoonyaFeedClient"]

@@ -1,0 +1,54 @@
+name: JEV-IMRP ORC-268 quality
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jev-imrp-orc-268-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+
+      - name: Install project and pinned development tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Check Ruff on the ORC-268 change surface
+        run: >-
+          python -m ruff check
+          src/jev_imrp/experiments/__init__.py
+          src/jev_imrp/experiments/pricing.py
+          src/jev_imrp/experiments/runner.py
+          src/jev_imrp/models/jev_client.py
+          tests/test_jev_pricing.py
+
+      - name: Check formatting on the ORC-268 change surface
+        run: >-
+          python -m ruff format --check
+          src/jev_imrp/experiments/__init__.py
+          src/jev_imrp/experiments/pricing.py
+          src/jev_imrp/experiments/runner.py
+          src/jev_imrp/models/jev_client.py
+          tests/test_jev_pricing.py
+
+      - name: Check the changed pricing modules
+        run: python -m mypy src/jev_imrp/experiments/pricing.py src/jev_imrp/experiments/runner.py

@@ -22,6 +22,16 @@ from jev_imrp.experiments.manifest import (
     TrialConfig,
     git_commit,
 )
+from jev_imrp.experiments.pricing import (
+    DEFAULT_PRICING_SNAPSHOT,
+    CostEstimate,
+    CostReport,
+    CostStatus,
+    PricingSnapshot,
+    aggregate_cost,
+    estimate_attempt_cost,
+    report_costs_by_mode,
+)
 from jev_imrp.experiments.runner import (
     COVERAGE_OUTPUTS,
     Decision,
@@ -33,15 +43,23 @@ from jev_imrp.experiments.runner import (
 __all__ = [
     "ATTEMPT_STORE_SCHEMA_VERSION",
     "COVERAGE_OUTPUTS",
+    "DEFAULT_PRICING_SNAPSHOT",
     "MANIFEST_SCHEMA_VERSION",
     "AttemptStore",
+    "CostEstimate",
+    "CostReport",
+    "CostStatus",
     "Decision",
     "ExperimentManifest",
     "JevRunResult",
     "JevRunner",
+    "PricingSnapshot",
     "RunStatus",
     "SplitBounds",
     "TrialConfig",
+    "aggregate_cost",
     "apply_failure_policy",
+    "estimate_attempt_cost",
     "git_commit",
+    "report_costs_by_mode",
 ]

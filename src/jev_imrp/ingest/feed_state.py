@@ -221,8 +221,9 @@ class QuoteStateBook:
     :class:`~jev_imrp.ingest.raw_event.RawEvent` and calls :meth:`apply`.
     """
 
-    def __init__(self, tick_sizes: dict[tuple[str, str], float] | None = None,
-                 duplicate_window: int = 64) -> None:
+    def __init__(
+        self, tick_sizes: dict[tuple[str, str], float] | None = None, duplicate_window: int = 64
+    ) -> None:
         #: (exchange, token) -> tick size from the instrument master. A missing key
         #: means the tick rule is unverifiable, which is not a failure.
         self.tick_sizes: dict[tuple[str, str], float] = dict(tick_sizes or {})
@@ -332,8 +333,9 @@ class QuoteStateBook:
         return state
 
     # -- helpers ------------------------------------------------------------
-    def _fresh_state(self, event: Any, key: tuple[str, str], present: tuple[str, ...],
-                     payload: dict[str, Any]) -> QuoteState:
+    def _fresh_state(
+        self, event: Any, key: tuple[str, str], present: tuple[str, ...], payload: dict[str, Any]
+    ) -> QuoteState:
         values: dict[str, Any] = {name: None for name in NUMERIC_FIELDS.values()}
         values.update({name: None for name in TEXT_FIELDS.values()})
         for raw_key, name in NUMERIC_FIELDS.items():
@@ -380,8 +382,9 @@ class QuoteStateBook:
             inherited = merge_reasons(
                 inherited,
                 tuple(
-                    r for r in previous.invalid_reasons if r not in (REASON_STALE, REASON_RECONNECT,
-                                                                    REASON_NO_SNAPSHOT)
+                    r
+                    for r in previous.invalid_reasons
+                    if r not in (REASON_STALE, REASON_RECONNECT, REASON_NO_SNAPSHOT)
                 ),
             )
         found: list[str] = []
