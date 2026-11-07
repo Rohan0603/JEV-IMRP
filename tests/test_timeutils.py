@@ -32,15 +32,11 @@ def test_ist_offset_is_fixed_and_aware() -> None:
 
 
 def test_ist_to_utc_conversion() -> None:
-    assert to_utc(from_ist(SESSION_DAY, SESSION_OPEN)) == datetime(
-        2026, 10, 16, 3, 45, tzinfo=UTC
-    )
+    assert to_utc(from_ist(SESSION_DAY, SESSION_OPEN)) == datetime(2026, 10, 16, 3, 45, tzinfo=UTC)
 
 
 def test_utc_to_ist_conversion() -> None:
-    assert to_ist(datetime(2026, 10, 16, 3, 45, tzinfo=UTC)) == from_ist(
-        SESSION_DAY, SESSION_OPEN
-    )
+    assert to_ist(datetime(2026, 10, 16, 3, 45, tzinfo=UTC)) == from_ist(SESSION_DAY, SESSION_OPEN)
 
 
 def test_session_boundary_is_the_critical_case() -> None:

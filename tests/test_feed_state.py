@@ -81,10 +81,25 @@ def feed_all(recorder: Recorder, messages: list[dict]) -> list:
 def snapshot_a(ft: str = "1790200100") -> dict:
     """A clean full snapshot for the synthetic equity token."""
     return {
-        "t": "tk", "e": "NSE", "tk": "9900001", "ti": "SYNTHETIC-A", "ft": ft,
-        "lp": "1000.00", "ls": "10", "v": "1000", "o": "995.00", "h": "1005.00", "l": "994.00",
-        "c": "999.50", "ap": "999.80", "pp": "998.00", "pc": "997.50",
-        "bq1": "50", "bp1": "999.90", "sq1": "40", "sp1": "1000.10",
+        "t": "tk",
+        "e": "NSE",
+        "tk": "9900001",
+        "ti": "SYNTHETIC-A",
+        "ft": ft,
+        "lp": "1000.00",
+        "ls": "10",
+        "v": "1000",
+        "o": "995.00",
+        "h": "1005.00",
+        "l": "994.00",
+        "c": "999.50",
+        "ap": "999.80",
+        "pp": "998.00",
+        "pc": "997.50",
+        "bq1": "50",
+        "bp1": "999.90",
+        "sq1": "40",
+        "sp1": "1000.10",
     }
 
 
@@ -233,8 +248,14 @@ def test_non_positive_and_missing_size_are_flagged(normal_recorder, normal):
 
     # a snapshot that carries prices without sizes: sizes stay absent, not zero
     _, no_size = normal_recorder.feed(
-        {"t": "tk", "e": "NSE", "tk": "9900001", "ft": "1790200081",
-         "bp1": "999.90", "sp1": "1000.10"}
+        {
+            "t": "tk",
+            "e": "NSE",
+            "tk": "9900001",
+            "ft": "1790200081",
+            "bp1": "999.90",
+            "sp1": "1000.10",
+        }
     )
     assert not no_size.state_valid
     assert no_size.invalid_reasons.count(REASON_MISSING_SIZE) == 1
@@ -263,8 +284,13 @@ def test_no_tick_size_means_unverifiable_not_invalid(tmp_path, normal):
     """Without a master row the tick rule cannot be checked, and an unverifiable
     rule must not manufacture an invalid quote."""
     writer = RawEventWriter(tmp_path / "raw", session_id="synthetic")
-    recorder = Recorder(writer=writer, book=QuoteStateBook(), session_id="synthetic",
-                        clock=FixedClock(), data_origin="synthetic")
+    recorder = Recorder(
+        writer=writer,
+        book=QuoteStateBook(),
+        session_id="synthetic",
+        clock=FixedClock(),
+        data_origin="synthetic",
+    )
     recorder.start()
     _, state = recorder.feed(normal["messages"][1])
     assert state.state_valid
@@ -305,8 +331,13 @@ def test_stale_state_is_reported_not_accepted(normal_recorder, normal):
 # --- tf before any snapshot ----------------------------------------------------
 def test_update_before_snapshot_is_flagged_not_interpreted(tmp_path):
     writer = RawEventWriter(tmp_path / "raw", session_id="synthetic")
-    recorder = Recorder(writer=writer, book=QuoteStateBook(), session_id="synthetic",
-                        clock=FixedClock(), data_origin="synthetic")
+    recorder = Recorder(
+        writer=writer,
+        book=QuoteStateBook(),
+        session_id="synthetic",
+        clock=FixedClock(),
+        data_origin="synthetic",
+    )
     recorder.start()
     _, state = recorder.feed(
         {"t": "tf", "e": "NSE", "tk": "9900001", "ft": "1790200000", "lp": "10"}
@@ -399,5 +430,3 @@ def test_unparseable_feed_time_is_null_not_replaced_by_local_time(normal_recorde
     assert event.feed_timestamp_utc is None
     assert state.feed_timestamp_utc is None
     assert state.received_timestamp_utc is not None
-
-

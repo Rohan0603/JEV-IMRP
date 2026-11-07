@@ -121,7 +121,8 @@ class FillPolicy:
         latency = entry.get("entry_latency_ms")
         max_age = entry.get("max_quote_age_ms")
         unresolved = sorted(
-            name for name, value in (("entry_latency_ms", latency), ("max_quote_age_ms", max_age))
+            name
+            for name, value in (("entry_latency_ms", latency), ("max_quote_age_ms", max_age))
             if is_unresolved(value)
         )
         if unresolved:

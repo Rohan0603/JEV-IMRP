@@ -10,29 +10,24 @@ Covers:
 
 from __future__ import annotations
 
-import csv
 import io
 import json
 import os
-from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from jev_imrp.ingest.symbol_resolver import (
-    ResolvedToken,
     SymbolResolutionError,
     _build_checksum,
-    _parse_response,
     _master_resolved_cache,
+    _parse_response,
     fetch_symbol_master_url,
     resolve_symbol,
     resolve_symbols_batch,
     resolve_via_master,
     resolve_via_searchscrip,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -62,14 +57,12 @@ def _create_symbol_master_zip(exchange: str, entries: list[dict]) -> bytes:
     Exchange,Token,LotSize,Symbol,TradingSymbol,Instrument,TickSize,...
     The trading symbol (e.g. SBIN-EQ) lives in TradingSymbol.
     """
-    lines = [
-        "Exchange,Token,LotSize,Symbol,TradingSymbol,Instrument,TickSize,"
-    ]
+    lines = ["Exchange,Token,LotSize,Symbol,TradingSymbol,Instrument,TickSize,"]
     for entry in entries:
         symbol_val = entry.get("symbol", "") or entry.get("tsym", "")
         token_val = entry.get("token", "") or entry.get("tok", "")
         trading_symbol = entry.get("trading_symbol", "") or symbol_val
-        name_val = entry.get("name", "") or entry.get("instrument_name", "")
+        entry.get("name", "") or entry.get("instrument_name", "")
         instrument = entry.get("instrument", "EQ")
         tick_size = str(entry.get("tick_size", "0.05"))
         lines.append(
@@ -78,6 +71,7 @@ def _create_symbol_master_zip(exchange: str, entries: list[dict]) -> bytes:
     content = "\n".join(lines).encode("utf-8")
 
     import zipfile
+
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(f"{exchange}_symbols.txt", content.decode("utf-8"))
@@ -91,20 +85,27 @@ def _create_symbol_master_zip(exchange: str, entries: list[dict]) -> bytes:
 
 def test_get_credentials_raises_when_env_not_set():
     """Credential lookup requires all three env vars."""
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(SymbolResolutionError, match="missing credentials"):
-            from jev_imrp.ingest.symbol_resolver import _get_credentials
-            _get_credentials()
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        pytest.raises(SymbolResolutionError, match="missing credentials"),
+    ):
+        from jev_imrp.ingest.symbol_resolver import _get_credentials
+
+        _get_credentials()
 
 
 def test_get_credentials_returns_tuple_when_all_present():
     """All three credentials present → returned as a tuple."""
-    with patch.dict(os.environ, {
-        "SHOONYA_API_KEY": "key",
-        "SHOONYA_API_SECRET": "secret",
-        "SHOONYA_ACCESS_TOKEN": "token",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "SHOONYA_API_KEY": "key",
+            "SHOONYA_API_SECRET": "secret",
+            "SHOONYA_ACCESS_TOKEN": "token",
+        },
+    ):
         from jev_imrp.ingest.symbol_resolver import _get_credentials
+
         result = _get_credentials()
         assert result == ("key", "secret", "token")
 
@@ -119,6 +120,7 @@ def test_checksum_without_code():
     checksum = _build_checksum("uid123", "mysecret")
     expected = "uid123mysecret"
     import hashlib
+
     computed = hashlib.sha256(expected.encode("utf-8")).hexdigest()
     assert checksum == computed
 
@@ -127,7 +129,8 @@ def test_checksum_with_code():
     """Checksum is SHA256(client_id + secret + code) when auth code is present."""
     checksum = _build_checksum("uid123", "mysecret", "authcode")
     import hashlib
-    computed = hashlib.sha256("uid123mysecretauthcode".encode("utf-8")).hexdigest()
+
+    computed = hashlib.sha256(b"uid123mysecretauthcode").hexdigest()
     assert checksum == computed
 
 
@@ -170,9 +173,13 @@ def test_searchscrip_exact_match_succeeds():
             {"tsym": "SBINMID150-EQ", "token": "9999", "name": "SBIN MIDCAP"},
         ],
     }
-    with patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()), \
-         patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               return_value=_mock_urlopen_with_response(response)):
+    with (
+        patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()),
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            return_value=_mock_urlopen_with_response(response),
+        ),
+    ):
         result = resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="SBIN-EQ")
         assert result.token == "22"
         assert result.symbol == "SBIN-EQ"
@@ -186,21 +193,29 @@ def test_searchscrip_fuzzy_match_rejected():
             {"tsym": "SBINMID150-EQ", "token": "9999", "name": "SBIN MIDCAP"},
         ],
     }
-    with patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()), \
-         patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               return_value=_mock_urlopen_with_response(response)):
-        with pytest.raises(SymbolResolutionError, match="fuzzy matches"):
-            resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="SBIN-EQ")
+    with (
+        patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()),
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            return_value=_mock_urlopen_with_response(response),
+        ),
+        pytest.raises(SymbolResolutionError, match="fuzzy matches"),
+    ):
+        resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="SBIN-EQ")
 
 
 def test_searchscrip_no_matches_raises():
     """SearchScrip returns empty list → SymbolResolutionError."""
     response = {"stat": "Ok", "scrips": []}
-    with patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()), \
-         patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               return_value=_mock_urlopen_with_response(response)):
-        with pytest.raises(SymbolResolutionError):
-            resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="NOSUCHSYM-EQ")
+    with (
+        patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()),
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            return_value=_mock_urlopen_with_response(response),
+        ),
+        pytest.raises(SymbolResolutionError),
+    ):
+        resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="NOSUCHSYM-EQ")
 
 
 def test_searchscrip_retries_on_retryable_error():
@@ -223,9 +238,13 @@ def test_searchscrip_retries_on_retryable_error():
     mock_resp2.__enter__.return_value = mock_resp2
     mock_resp2.__exit__.return_value = False
 
-    with patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()), \
-         patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               side_effect=[mock_resp1, mock_resp2]):
+    with (
+        patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()),
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            side_effect=[mock_resp1, mock_resp2],
+        ),
+    ):
         result = resolve_via_searchscrip(user_id="uid123", exchange="NSE", symbol="SBIN-EQ")
         assert result.token == "22"
 
@@ -237,10 +256,13 @@ def test_searchscrip_retries_on_retryable_error():
 
 def test_master_resolution_exact_match():
     """Symbol master lookup returns exact match token."""
-    zip_content = _create_symbol_master_zip("NSE", [
-        {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
-        {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
-    ])
+    zip_content = _create_symbol_master_zip(
+        "NSE",
+        [
+            {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
+            {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
+        ],
+    )
     mock_resp = MagicMock()
     mock_resp.read.return_value = zip_content
     mock_resp.getcode.return_value = 200
@@ -256,10 +278,13 @@ def test_master_resolution_exact_match():
 
 def test_master_resolution_missing_symbol_raises():
     """Symbol not in master → SymbolResolutionError."""
-    zip_content = _create_symbol_master_zip("NSE", [
-        {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
-        {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
-    ])
+    zip_content = _create_symbol_master_zip(
+        "NSE",
+        [
+            {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
+            {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
+        ],
+    )
     mock_resp = MagicMock()
     mock_resp.read.return_value = zip_content
     mock_resp.getcode.return_value = 200
@@ -267,19 +292,27 @@ def test_master_resolution_missing_symbol_raises():
     mock_resp.__enter__.return_value = mock_resp
     mock_resp.__exit__.return_value = False
 
-    with patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen", return_value=mock_resp):
-        with pytest.raises(SymbolResolutionError, match="not found"):
-            resolve_via_master("NSE", "NOSUCHSYM-EQ")
+    with (
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            return_value=mock_resp,
+        ),
+        pytest.raises(SymbolResolutionError, match="not found"),
+    ):
+        resolve_via_master("NSE", "NOSUCHSYM-EQ")
 
 
 def test_master_resolution_caches_result():
     """Subsequent lookups for the same symbol use the cache."""
     global _master_resolved_cache
     _master_resolved_cache.clear()
-    zip_content = _create_symbol_master_zip("NSE", [
-        {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
-        {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
-    ])
+    zip_content = _create_symbol_master_zip(
+        "NSE",
+        [
+            {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "STATE BANK OF INDIA"},
+            {"ts": "NSE", "tok": "23", "symbol": "RELIANCE-EQ", "name": "RELIANCE INDUSTRIES"},
+        ],
+    )
     mock_resp = MagicMock()
     mock_resp.read.return_value = zip_content
     mock_resp.getcode.return_value = 200
@@ -300,20 +333,25 @@ def test_master_resolution_caches_result():
 
 def test_resolve_symbol_prefers_master():
     """resolve_symbol tries master first, falls back to SearchScrip on miss."""
-    zip_content = _create_symbol_master_zip("NSE", [
-        {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "SBI"},
-    ])
-    with patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               side_effect=[
-                   # First call: master lookup (returns 200 with zip)
-                   MagicMock(
-                       read=MagicMock(return_value=zip_content),
-                       getcode=MagicMock(return_value=200),
-                       headers={},
-                       __enter__=lambda s: s,
-                       __exit__=MagicMock(return_value=False),
-                   ),
-               ]):
+    zip_content = _create_symbol_master_zip(
+        "NSE",
+        [
+            {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "SBI"},
+        ],
+    )
+    with patch(
+        "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+        side_effect=[
+            # First call: master lookup (returns 200 with zip)
+            MagicMock(
+                read=MagicMock(return_value=zip_content),
+                getcode=MagicMock(return_value=200),
+                headers={},
+                __enter__=lambda s: s,
+                __exit__=MagicMock(return_value=False),
+            ),
+        ],
+    ):
         result = resolve_symbol("NSE", "SBIN-EQ")
         assert result.token == "22"
 
@@ -338,9 +376,13 @@ def test_resolve_symbol_fallback_to_searchscrip():
     mock_search_resp.__enter__.return_value = mock_search_resp
     mock_search_resp.__exit__.return_value = False
 
-    with patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()), \
-         patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               side_effect=[mock_master_resp, mock_search_resp]):
+    with (
+        patch("jev_imrp.ingest.symbol_resolver._get_credentials", return_value=_make_credentials()),
+        patch(
+            "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
+            side_effect=[mock_master_resp, mock_search_resp],
+        ),
+    ):
         result = resolve_symbol("NSE", "SBIN-EQ", use_master=True, user_id="uid123")
         assert result.token == "22"
 
@@ -352,10 +394,13 @@ def test_resolve_symbol_fallback_to_searchscrip():
 
 def test_resolve_symbols_batch():
     """Batch resolution returns a list of ResolvedTokens."""
-    master_zip = _create_symbol_master_zip("NSE", [
-        {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "SBI"},
-        {"ts": "NSE", "tok": "1419", "symbol": "RELIANCE-EQ", "name": "RELIANCE"},
-    ])
+    master_zip = _create_symbol_master_zip(
+        "NSE",
+        [
+            {"ts": "NSE", "tok": "22", "symbol": "SBIN-EQ", "name": "SBI"},
+            {"ts": "NSE", "tok": "1419", "symbol": "RELIANCE-EQ", "name": "RELIANCE"},
+        ],
+    )
     mock_resp = MagicMock()
     mock_resp.read.return_value = master_zip
     mock_resp.getcode.return_value = 200
@@ -363,12 +408,15 @@ def test_resolve_symbols_batch():
     mock_resp.__enter__.return_value = mock_resp
     mock_resp.__exit__.return_value = False
 
-    with patch("jev_imrp.ingest.symbol_resolver.urllib.request.urlopen",
-               side_effect=[mock_resp, mock_resp]):
-        results = resolve_symbols_batch([
-            ("NSE", "SBIN-EQ"),
-            ("NSE", "RELIANCE-EQ"),
-        ])
+    with patch(
+        "jev_imrp.ingest.symbol_resolver.urllib.request.urlopen", side_effect=[mock_resp, mock_resp]
+    ):
+        results = resolve_symbols_batch(
+            [
+                ("NSE", "SBIN-EQ"),
+                ("NSE", "RELIANCE-EQ"),
+            ]
+        )
         assert len(results) == 2
         assert results[0].token == "22"
         assert results[1].token == "1419"
@@ -388,4 +436,5 @@ def test_symbol_master_url_format():
 def test_rest_base_constant():
     """REST base uses the documented endpoint path (CLAUDE.md: NorenWClientAPI/)."""
     from jev_imrp.ingest.symbol_resolver import REST_BASE
+
     assert REST_BASE == "https://api.shoonya.com/NorenWClientAPI/"

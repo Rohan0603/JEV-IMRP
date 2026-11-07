@@ -141,8 +141,9 @@ def test_exchange_rate_is_versioned_by_effective_date(schedule: FeeSchedule) -> 
     assert before.exchange_transaction_fee < after.exchange_transaction_fee
 
 
-@pytest.mark.parametrize("round_trip", FIXTURES["round_trips"],
-                         ids=[r["name"] for r in FIXTURES["round_trips"]])
+@pytest.mark.parametrize(
+    "round_trip", FIXTURES["round_trips"], ids=[r["name"] for r in FIXTURES["round_trips"]]
+)
 def test_hand_calculated_round_trip(schedule: FeeSchedule, round_trip: dict[str, Any]) -> None:
     """Both legs reconciled into one round trip; fees are charged twice, once per leg."""
     on = date.fromisoformat(round_trip["on"])

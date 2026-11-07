@@ -1,14 +1,18 @@
 """Linear baseline policy for binary net profitability classification (plan 9.1).
 
-This policy implements a logistic regression model for binary classification of net profitability. It adheres to the fairness constraints (plan 9.2) and uses the same feature set as the other baselines.
+This policy implements logistic regression for binary net-profitability
+classification. It follows the plan 9.2 fairness constraints and shares the
+baseline feature set.
 
 Key design decisions:
 - Binary classification task: predict `net_return > 0`.
-- Logistic regression with fixed hyperparameters: `C=1.0`, `l1_ratio=0.0` (L2 penalty), `solver='lbfgs'`, `max_iter=1000`.
+- Logistic regression with fixed hyperparameters: `C=1.0`, `l1_ratio=0.0`
+  (L2 penalty), `solver='lbfgs'`, and `max_iter=1000`.
 - Preprocessing: Standardize features using `StandardScaler` fitted on training data only.
-- Missing data policy: If a required feature is missing or non-finite, REJECT with `missing_feature:<name>` reason.
+- Missing data policy: missing or non-finite features are rejected with a
+  `missing_feature:<name>` reason.
 - Deterministic: Same inputs → same decisions. Set `random_state` on the logistic regression.
-- Feature encoding: Use only numeric features from `TRAINING_FEATURES`, skipping `tod_bucket` (categorical).
+- Feature encoding: use numeric `TRAINING_FEATURES` and skip categorical `tod_bucket`.
 """
 
 from __future__ import annotations
@@ -17,21 +21,19 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression  # type: ignore[import-untyped]
+from sklearn.pipeline import Pipeline  # type: ignore[import-untyped]
+from sklearn.preprocessing import StandardScaler  # type: ignore[import-untyped]
 
 from jev_imrp.candidates.schema import CandidateRecord
-from jev_imrp.models.policy import Decision, PolicyDecision, PolicyError
 from jev_imrp.features.definitions import TRAINING_FEATURES
+from jev_imrp.models.policy import Decision, PolicyDecision, PolicyError
 
 LINEAR_POLICY_VERSION = "linear_v1"
 
 #: Numeric features used by the linear baseline. ``tod_bucket`` is categorical
 #: and is deliberately excluded so the scaler sees only continuous inputs.
-LINEAR_FEATURES: tuple[str, ...] = tuple(
-    name for name in TRAINING_FEATURES if name != "tod_bucket"
-)
+LINEAR_FEATURES: tuple[str, ...] = tuple(name for name in TRAINING_FEATURES if name != "tod_bucket")
 
 
 def _build_pipeline(
@@ -119,12 +121,16 @@ class LinearBaselinePolicy:
         """
         import numpy as np
 
-        X_array = np.array(
-            [
-                [float(c.get(feature)) for feature in LINEAR_FEATURES]
-                for c in X
-            ]
-        )
+        rows: list[list[float]] = []
+        for candidate in X:
+            row: list[float] = []
+            for feature in LINEAR_FEATURES:
+                value = candidate.get(feature)
+                if value is None:
+                    raise PolicyError(f"missing_feature:{feature}")
+                row.append(float(value))
+            rows.append(row)
+        X_array = np.array(rows)
         y_array = np.array(y)
         self.pipeline.fit(X_array, y_array)
         object.__setattr__(self, "_fitted", True)
@@ -153,8 +159,8 @@ class LinearBaselinePolicy:
                 if not (numeric_value >= -1e6 and numeric_value <= 1e6):
                     raise PolicyError(f"invalid_feature:{feature}")
                 features.append(numeric_value)
-            except (TypeError, ValueError):
-                raise PolicyError(f"invalid_feature:{feature}")
+            except (TypeError, ValueError) as exc:
+                raise PolicyError(f"invalid_feature:{feature}") from exc
         return features
 
     def decide(self, candidate: CandidateRecord) -> PolicyDecision:
@@ -204,4 +210,4 @@ class LinearBaselinePolicy:
         return tuple(self.decide(candidate) for candidate in candidates)
 
 
-__all__ = ["LINEAR_POLICY_VERSION", "LINEAR_FEATURES", "LinearBaselinePolicy"]
+__all__ = ["LINEAR_FEATURES", "LINEAR_POLICY_VERSION", "LinearBaselinePolicy"]

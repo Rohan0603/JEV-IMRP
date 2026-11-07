@@ -22,8 +22,12 @@ from jev_imrp.common.logging import RedactingFilter, get_logger, redact
 
 
 def test_shipped_configs_load() -> None:
-    for loaded in (load_universe(), load_cost_schedule(), load_execution_policy(),
-                   load_feature_config()):
+    for loaded in (
+        load_universe(),
+        load_cost_schedule(),
+        load_execution_policy(),
+        load_feature_config(),
+    ):
         assert isinstance(loaded, dict) and loaded
 
 
@@ -67,8 +71,12 @@ def test_secret_value_is_never_echoed_in_logs(caplog) -> None:
 
 
 def test_redact_handles_common_shapes() -> None:
-    for raw in ("ttoken=abc123", "password: p@ss", "Authorization: Bearer xyz.abc",
-                "access_token=zzz"):
+    for raw in (
+        "ttoken=abc123",
+        "password: p@ss",
+        "Authorization: Bearer xyz.abc",
+        "access_token=zzz",
+    ):
         assert "REDACTED" in redact(raw), raw
 
 
@@ -122,9 +130,7 @@ def test_known_verified_rates() -> None:
     assert components["stamp_duty"]["absolute_per_crore_inr"] == 300
     assert components["stamp_duty"]["sides"] == ["buy"]
     assert components["gst"]["rate_pct"] == 18
-    assert components["ipft_and_other_levies"]["gst_treatment"] == (
-        "per_broker_contract"
-    )
+    assert components["ipft_and_other_levies"]["gst_treatment"] == ("per_broker_contract")
     assert components["ipft_and_other_levies"]["included_by_default"] is False
 
 

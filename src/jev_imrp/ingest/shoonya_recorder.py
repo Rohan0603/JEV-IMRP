@@ -23,6 +23,7 @@ new snapshot repairs it.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import signal
 import uuid
@@ -100,7 +101,7 @@ class Recorder:
         self.generation = 0
         self._sequence = 0
         self._last_signal: int | None = None
-        self._websocket_task: asyncio.Task | None = None
+        self._websocket_task: asyncio.Task[Any] | None = None
         self._websocket_loop: asyncio.AbstractEventLoop | None = None
         self._websocket: Any = None
         self._connect_frame: dict[str, Any] | None = None
@@ -323,10 +324,8 @@ class Recorder:
         if self._websocket_task and not self._websocket_task.done():
             self._websocket_task.cancel()
             if self._websocket_loop and not self._websocket_loop.is_running():
-                try:
+                with contextlib.suppress(asyncio.CancelledError, RuntimeError):
                     self._websocket_loop.run_until_complete(self._websocket_task)
-                except (asyncio.CancelledError, RuntimeError):
-                    pass
 
     async def backfill_historical_data(
         self,
@@ -352,9 +351,7 @@ class Recorder:
         """
         try:
             # Fetch TPSeries data with pagination support
-            tp_data = fetch_tp_series_data(
-                exchange, symbol, from_date, to_date, interval, user_id
-            )
+            tp_data = fetch_tp_series_data(exchange, symbol, from_date, to_date, interval, user_id)
 
             # Convert TPSeries data to RawEvents and write to the writer
             for candle in tp_data:
@@ -417,9 +414,7 @@ class Recorder:
         """
         try:
             # Fetch EODChartData data with pagination support
-            eod_data = fetch_eod_chart_data(
-                exchange, symbol, from_date, to_date, user_id
-            )
+            eod_data = fetch_eod_chart_data(exchange, symbol, from_date, to_date, user_id)
 
             # Convert EOD data to RawEvents and write to the writer
             for candle in eod_data:

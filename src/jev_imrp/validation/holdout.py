@@ -122,9 +122,7 @@ class HoldoutGuard:
         try:
             aware_stamp = ensure_aware(stamp)
         except ValueError as exc:
-            raise HoldoutError(
-                f"row {self.timestamp_key} timestamp is invalid: {stamp!r}"
-            ) from exc
+            raise HoldoutError(f"row {self.timestamp_key} timestamp is invalid: {stamp!r}") from exc
         return self.is_holdout_session(ist_session_date(aware_stamp))
 
     def holdout_rows(self, rows: Iterable[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
