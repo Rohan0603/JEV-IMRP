@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import os
 import tempfile
@@ -415,12 +416,19 @@ class JevRunner:
         """Keep the raw response next to the attempt record (plan 9.4)."""
         if payload is None or not self.raw_response_dir:
             return None
-        path = (
-            Path(self.raw_response_dir)
-            / self.experiment_id
-            / self.client.execution_mode
-            / f"{candidate.candidate_id}-a{attempt_number:02d}.json"
+        raw_root = Path(self.raw_response_dir).resolve()
+        identity = json.dumps(
+            [
+                self.experiment_id,
+                self.client.execution_mode,
+                candidate.candidate_id,
+                attempt_number,
+            ],
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        path = raw_root / f"{digest}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         content = json.dumps(payload, sort_keys=True, indent=2, default=str)
         fd, temporary_name = tempfile.mkstemp(

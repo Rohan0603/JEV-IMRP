@@ -223,6 +223,25 @@ def test_raw_response_publication_is_no_clobber_for_same_attempt(tmp_path: Path)
     assert json.loads(Path(first).read_text(encoding="utf-8"))["value"] == "first"
 
 
+def test_raw_response_reference_is_safe_for_path_like_identifiers(tmp_path: Path) -> None:
+    runner = _runner(
+        CountingClient(),
+        AttemptStore(tmp_path / "attempts.jsonl"),
+        experiment_id="exp/..\\outside",
+        raw_response_dir=str(tmp_path / "raw"),
+    )
+    candidate = _candidate("candidate/..\\outside")
+
+    reference = runner._store_raw({"value": "safe"}, candidate, 0)
+
+    assert reference is not None
+    reference_path = Path(reference).resolve()
+    raw_root = (tmp_path / "raw").resolve()
+    assert reference_path.is_relative_to(raw_root)
+    assert len(reference_path.stem) == 64
+    assert reference_path.suffix == ".json"
+
+
 def test_unexpected_client_exception_is_durably_recorded(tmp_path: Path) -> None:
     asyncio.run(_assert_unexpected_client_exception_is_durably_recorded(tmp_path))
 
