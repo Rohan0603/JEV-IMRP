@@ -92,6 +92,7 @@ FAILURE_REASONS: Final = (
     "model_mismatch",
     "alias_in_confirmatory",
     "client_error",
+    "cancelled",
 )
 
 
@@ -622,9 +623,27 @@ class Attempt:
         )
 
 
-def attempt_id_for(experiment_id: str, candidate_id: str, attempt_number: int) -> str:
-    """Deterministic attempt id, so a rerun rewrites the same id, not a new one."""
-    return f"{experiment_id}:{candidate_id}:a{attempt_number:02d}"
+def attempt_id_for(
+    experiment_id: str,
+    candidate_id: str,
+    attempt_number: int,
+    execution_mode: ExecutionMode,
+) -> str:
+    """Deterministic, collision-safe id for idempotent reruns.
+
+    The v1 colon-delimited form remains readable from existing stores, but is
+    not emitted because identifiers containing ``:`` could collide.
+    """
+    identity = canonical_json(
+        {
+            "schema": "jev_attempt_id_v2",
+            "experiment_id": experiment_id,
+            "candidate_id": candidate_id,
+            "execution_mode": execution_mode,
+            "attempt_number": attempt_number,
+        }
+    ).encode("utf-8")
+    return f"jev-a2-{hashlib.sha256(identity).hexdigest()}"
 
 
 # --------------------------------------------------------------------------

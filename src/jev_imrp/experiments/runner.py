@@ -18,7 +18,11 @@ one.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import hashlib
 import json
+import os
+import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -256,12 +260,87 @@ class JevRunner:
     async def _run_one(self, candidate: Candidate, state: dict[str, Any]) -> _AttemptOutcome:
         """Send one state with bounded retries, persisting every try."""
         request = build_request(state, self.model_id, self.questions)
-        outcome = _AttemptOutcome(payload_hash=canonical_hash(state))
-        for attempt_number in range(self.retry.max_retries + 1):
-            started = time.perf_counter()
-            result: CallResult = await self.client.answer(
-                request, questions=self.questions, attempt_number=attempt_number
+        contract_hash = canonical_hash(self._request_contract(request))
+        outcome = _AttemptOutcome(payload_hash=contract_hash)
+        existing = [
+            attempt
+            for attempt in self.store.for_candidate(candidate.candidate_id)
+            if attempt.experiment_id == self.experiment_id
+            and attempt.execution_mode == self.client.execution_mode
+        ]
+        if existing:
+            latest = max(existing, key=lambda attempt: attempt.retry_count)
+            if latest.payload_hash != contract_hash:
+                _LOG.error(
+                    "jev replay contract mismatch experiment=%s candidate=%s",
+                    self.experiment_id,
+                    candidate.candidate_id,
+                )
+                return _AttemptOutcome(
+                    failure_reason="replay_contract_mismatch",
+                    payload_hash=contract_hash,
+                )
+            outcome = _AttemptOutcome(
+                attempt_ids=[
+                    attempt.attempt_id for attempt in sorted(existing, key=lambda a: a.retry_count)
+                ],
+                answers=latest.answers,
+                returned_model_id=latest.returned_model_id,
+                failure_reason=latest.failure_reason,
+                http_status=latest.http_status,
+                input_tokens=latest.input_tokens,
+                output_tokens=latest.output_tokens,
+                payload_hash=latest.payload_hash,
             )
+            retryable = (
+                latest.failure_reason is not None
+                and latest.http_status in self.retry.status_codes
+                and latest.retry_count < self.retry.max_retries
+            )
+            resumable_cancellation = latest.failure_reason == "cancelled"
+            if latest.answers or (
+                latest.failure_reason is not None and not retryable and not resumable_cancellation
+            ):
+                return outcome
+            start_attempt = latest.retry_count + 1
+        else:
+            start_attempt = 0
+        end_attempt = self.retry.max_retries
+        if existing and resumable_cancellation:
+            # Cancellation may happen after the provider accepted the request.
+            # Permit one explicit recovery call even when normal retries are zero.
+            end_attempt = max(end_attempt, start_attempt)
+        for attempt_number in range(start_attempt, end_attempt + 1):
+            started = time.perf_counter()
+            try:
+                result: CallResult = await self.client.answer(
+                    request, questions=self.questions, attempt_number=attempt_number
+                )
+            except asyncio.CancelledError:
+                latency_ms = (time.perf_counter() - started) * 1000.0
+                self._record(
+                    request,
+                    candidate,
+                    CallResult(failure_reason="cancelled"),
+                    attempt_number,
+                    outcome,
+                    latency_ms,
+                )
+                raise
+            except Exception as exc:
+                latency_ms = (time.perf_counter() - started) * 1000.0
+                outcome = self._record(
+                    request,
+                    candidate,
+                    CallResult(
+                        failure_reason="client_error",
+                        error_detail=exc.__class__.__name__,
+                    ),
+                    attempt_number,
+                    outcome,
+                    latency_ms,
+                )
+                return outcome
             latency_ms = (time.perf_counter() - started) * 1000.0
             outcome = self._record(request, candidate, result, attempt_number, outcome, latency_ms)
             if outcome.failure_reason is None:
@@ -280,6 +359,21 @@ class JevRunner:
             )
             await asyncio.sleep(delay)
         return outcome  # pragma: no cover - the loop always returns
+
+    def _request_contract(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Return the versioned request/policy identity used for replay."""
+        return {
+            "schema": "jev_request_contract_v2",
+            "request": request,
+            "failure_policy": self.failure_policy,
+            "execution_mode": self.client.execution_mode,
+            "retry": {
+                "max_retries": self.retry.max_retries,
+                "base_delay_s": self.retry.base_delay_s,
+                "max_delay_s": self.retry.max_delay_s,
+                "status_codes": list(self.retry.status_codes),
+            },
+        }
 
     def _record(
         self,
@@ -316,7 +410,12 @@ class JevRunner:
                 answers = response.answers
 
         attempt = Attempt(
-            attempt_id=attempt_id_for(self.experiment_id, candidate.candidate_id, attempt_number),
+            attempt_id=attempt_id_for(
+                self.experiment_id,
+                candidate.candidate_id,
+                attempt_number,
+                self.client.execution_mode,
+            ),
             experiment_id=self.experiment_id,
             candidate_id=candidate.candidate_id,
             execution_mode=self.client.execution_mode,
@@ -331,7 +430,7 @@ class JevRunner:
             http_status=result.status,
             latency_ms=round(latency_ms, 3),
             failure_reason=failure_reason,
-            raw_response_ref=self._store_raw(result.payload, candidate),
+            raw_response_ref=self._store_raw(result.payload, candidate, attempt_number),
             answers=answers,
             input_tokens=response.input_tokens if response else outcome.input_tokens,
             output_tokens=response.output_tokens if response else outcome.output_tokens,
@@ -349,15 +448,38 @@ class JevRunner:
             payload_hash=outcome.payload_hash,
         )
 
-    def _store_raw(self, payload: Any, candidate: Candidate) -> str | None:
+    def _store_raw(self, payload: Any, candidate: Candidate, attempt_number: int) -> str | None:
         """Keep the raw response next to the attempt record (plan 9.4)."""
         if payload is None or not self.raw_response_dir:
             return None
-        path = Path(self.raw_response_dir) / f"{candidate.candidate_id}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(payload, sort_keys=True, indent=2, default=str), encoding="utf-8"
+        raw_root = Path(self.raw_response_dir).resolve()
+        identity = json.dumps(
+            [
+                self.experiment_id,
+                self.client.execution_mode,
+                candidate.candidate_id,
+                attempt_number,
+            ],
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        path = raw_root / f"{digest}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        content = json.dumps(payload, sort_keys=True, indent=2, default=str)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            with contextlib.suppress(FileExistsError):
+                os.link(temporary_name, path)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(temporary_name)
         return str(path)
 
     # -- the stream --------------------------------------------------------
@@ -411,10 +533,13 @@ class JevRunner:
     def _summarise(
         self, decisions: tuple[Decision, ...], artifact_paths: dict[str, str]
     ) -> JevRunResult:
+        candidate_ids = {decision.candidate_id for decision in decisions}
         attempts = [
             attempt
             for attempt in self.store.attempts()
             if attempt.experiment_id == self.experiment_id
+            and attempt.execution_mode == self.client.execution_mode
+            and attempt.candidate_id in candidate_ids
         ]
         total = len(decisions)
         answered = sum(1 for d in decisions if d.source == "jev")
