@@ -9,6 +9,11 @@ from __future__ import annotations
 
 from jev_imrp.ingest.feed_state import QuoteState, QuoteStateBook
 from jev_imrp.ingest.file_writer import RawEventWriter, read_manifest, verify_manifest
+from jev_imrp.ingest.historical_data_client import (
+    HistoricalDataError,
+    fetch_eod_chart_data,
+    fetch_tp_series_data,
+)
 from jev_imrp.ingest.raw_event import (
     RAW_EVENT_SCHEMA,
     RawEvent,
@@ -24,10 +29,10 @@ from jev_imrp.ingest.symbol_resolver import (
     resolve_via_master,
     resolve_via_searchscrip,
 )
-from jev_imrp.ingest.historical_data_client import fetch_tp_series_data, fetch_eod_chart_data, HistoricalDataError
 
 __all__ = [
     "RAW_EVENT_SCHEMA",
+    "HistoricalDataError",
     "QuoteState",
     "QuoteStateBook",
     "RawEvent",
@@ -36,6 +41,8 @@ __all__ = [
     "ResolvedToken",
     "SymbolResolutionError",
     "empty_table",
+    "fetch_eod_chart_data",
+    "fetch_tp_series_data",
     "new_event_id",
     "read_manifest",
     "resolve_symbol",
@@ -43,7 +50,4 @@ __all__ = [
     "resolve_via_master",
     "resolve_via_searchscrip",
     "verify_manifest",
-    "fetch_tp_series_data",
-    "fetch_eod_chart_data",
-    "HistoricalDataError",
 ]

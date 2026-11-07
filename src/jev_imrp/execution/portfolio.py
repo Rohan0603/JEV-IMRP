@@ -69,8 +69,9 @@ class TradeResult:
         }
 
 
-def signed_gross_pnl(*, position_side: str, quantity: int, entry_price: Decimal,
-                      exit_price: Decimal) -> Decimal:
+def signed_gross_pnl(
+    *, position_side: str, quantity: int, entry_price: Decimal, exit_price: Decimal
+) -> Decimal:
     """Gross P&L in rupees, signed by the position side."""
     side = position_side.lower()
     if side == "long":

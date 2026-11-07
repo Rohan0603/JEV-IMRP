@@ -186,9 +186,9 @@ def test_cost_aware_filter_accepts_only_where_expected_gross_beats_cost_plus_mar
             assert decision.decision is Decision.REJECT
             continue
         # Need to apply same bucket function as decide()
-        bucket = round(
-            float(raw_bucket) / policy.estimates.bucket_width
-        ) * policy.estimates.bucket_width
+        bucket = (
+            round(float(raw_bucket) / policy.estimates.bucket_width) * policy.estimates.bucket_width
+        )
         estimate = policy.estimates.estimate_for(bucket)
         if estimate is None:
             # No estimate for this bucket - decision should reflect that

@@ -45,20 +45,36 @@ def test_marketable_side_conventions_per_side() -> None:
 
     quotes = [q(0, "99.90", "100.00")]
     long_entry = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=10,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=10,
+        quotes=quotes,
+        policy=POLICY,
     )
     long_exit = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.EXIT, quantity=10,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.EXIT,
+        quantity=10,
+        quotes=quotes,
+        policy=POLICY,
     )
     short_entry = simulate_fill(
-        decision_time=DAY, position_side="short", leg=Leg.ENTRY, quantity=10,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="short",
+        leg=Leg.ENTRY,
+        quantity=10,
+        quotes=quotes,
+        policy=POLICY,
     )
     short_exit = simulate_fill(
-        decision_time=DAY, position_side="short", leg=Leg.EXIT, quantity=10,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="short",
+        leg=Leg.EXIT,
+        quantity=10,
+        quotes=quotes,
+        policy=POLICY,
     )
     assert long_entry.price == Decimal("100.00")  # ask1
     assert long_exit.price == Decimal("99.90")  # bid1
@@ -72,8 +88,12 @@ def test_latency_moves_arrival_and_picks_the_point_in_time_quote() -> None:
     """A quote newer than the modelled arrival must never be used."""
     quotes = [q(0, "99.90", "100.00"), q(10, "100.50", "100.60")]
     fill = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=quotes,
+        policy=POLICY,
     )
     assert fill.arrival_time == DAY + timedelta(milliseconds=300)
     assert fill.quote_ts == DAY
@@ -82,8 +102,12 @@ def test_latency_moves_arrival_and_picks_the_point_in_time_quote() -> None:
 
     slow = FillPolicy(entry_latency_ms=11_000, max_quote_age_ms=2000)
     late = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=quotes, policy=slow,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=quotes,
+        policy=slow,
     )
     assert late.quote_ts == DAY + timedelta(seconds=10)
     assert late.price == Decimal("100.60")
@@ -93,8 +117,12 @@ def test_latency_moves_arrival_and_picks_the_point_in_time_quote() -> None:
 def test_stale_quote_is_unfillable_and_never_invents_a_price() -> None:
     quotes = [q(0, "99.90", "100.00")]
     fill = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=quotes, policy=FillPolicy(entry_latency_ms=300, max_quote_age_ms=200),
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=quotes,
+        policy=FillPolicy(entry_latency_ms=300, max_quote_age_ms=200),
     )
     assert fill.status is FillStatus.UNFILLABLE
     assert fill.reason is UnfillableReason.STALE_QUOTE
@@ -107,8 +135,12 @@ def test_stale_quote_is_unfillable_and_never_invents_a_price() -> None:
 def test_missing_touchline_is_unfillable() -> None:
     quotes = [q(0, "99.90", None)]  # no ask: a long entry cannot be priced
     fill = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=quotes,
+        policy=POLICY,
     )
     assert fill.status is FillStatus.UNFILLABLE
     assert fill.reason is UnfillableReason.MISSING_TOUCHLINE
@@ -118,8 +150,12 @@ def test_missing_touchline_is_unfillable() -> None:
 def test_no_quote_at_or_before_arrival_is_unfillable() -> None:
     quotes = [q(5, "99.90", "100.00")]  # entirely in the future of the arrival
     fill = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=quotes, policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=quotes,
+        policy=POLICY,
     )
     assert fill.status is FillStatus.UNFILLABLE
     assert fill.reason is UnfillableReason.NO_QUOTE_AT_OR_BEFORE_ARRIVAL
@@ -128,23 +164,35 @@ def test_no_quote_at_or_before_arrival_is_unfillable() -> None:
 
 def test_empty_quote_stream_is_unfillable() -> None:
     fill = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=[], policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=[],
+        policy=POLICY,
     )
     assert fill.reason is UnfillableReason.MISSING_QUOTE
 
 
 def test_invalid_quotes_are_unfillable() -> None:
     non_positive = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=[q(0, "0.00", "0.00")], policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=[q(0, "0.00", "0.00")],
+        policy=POLICY,
     )
     assert non_positive.reason is UnfillableReason.NON_POSITIVE_PRICE
     assert non_positive.price is None
 
     crossed = simulate_fill(
-        decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=1,
-        quotes=[q(0, "101.00", "100.00")], policy=POLICY,
+        decision_time=DAY,
+        position_side="long",
+        leg=Leg.ENTRY,
+        quantity=1,
+        quotes=[q(0, "101.00", "100.00")],
+        policy=POLICY,
     )
     assert crossed.reason is UnfillableReason.CROSSED_QUOTE
     assert crossed.price is None
@@ -152,8 +200,12 @@ def test_invalid_quotes_are_unfillable() -> None:
 
 def test_fill_records_decision_arrival_quote_timestamps_and_age() -> None:
     fill = simulate_fill(
-        decision_time=DAY, position_side="short", leg=Leg.ENTRY, quantity=7,
-        quotes=[q(0, "99.90", "100.00")], policy=POLICY,
+        decision_time=DAY,
+        position_side="short",
+        leg=Leg.ENTRY,
+        quantity=7,
+        quotes=[q(0, "99.90", "100.00")],
+        policy=POLICY,
     )
     assert isinstance(fill, Fill)
     assert fill.decision_time == DAY
@@ -181,16 +233,28 @@ def test_policy_is_rejected_when_a_touchline_age_window_is_empty() -> None:
 def test_bad_arguments_are_rejected() -> None:
     with pytest.raises(ValueError, match="position_side"):
         simulate_fill(
-            decision_time=DAY, position_side="sideways", leg=Leg.ENTRY, quantity=1,
-            quotes=[q(0, "1", "2")], policy=POLICY,
+            decision_time=DAY,
+            position_side="sideways",
+            leg=Leg.ENTRY,
+            quantity=1,
+            quotes=[q(0, "1", "2")],
+            policy=POLICY,
         )
     with pytest.raises(ValueError, match="quantity"):
         simulate_fill(
-            decision_time=DAY, position_side="long", leg=Leg.ENTRY, quantity=0,
-            quotes=[q(0, "1", "2")], policy=POLICY,
+            decision_time=DAY,
+            position_side="long",
+            leg=Leg.ENTRY,
+            quantity=0,
+            quotes=[q(0, "1", "2")],
+            policy=POLICY,
         )
     with pytest.raises(ValueError, match="naive datetime"):
         simulate_fill(
-            decision_time=datetime(2026, 10, 5, 9, 30), position_side="long", leg=Leg.ENTRY,
-            quantity=1, quotes=[q(0, "1", "2")], policy=POLICY,
+            decision_time=datetime(2026, 10, 5, 9, 30),
+            position_side="long",
+            leg=Leg.ENTRY,
+            quantity=1,
+            quotes=[q(0, "1", "2")],
+            policy=POLICY,
         )

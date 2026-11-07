@@ -7,6 +7,7 @@ Uses unittest.mock to avoid real network connections.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -36,14 +37,17 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
         mock_socket = AsyncMock()
         mock_socket.__aenter__ = AsyncMock(return_value=mock_socket)
         mock_socket.__aexit__ = AsyncMock(return_value=None)
+
         # Mock message iteration to end immediately
         async def mock_async_iter(self):
             return
             yield  # Makes this an async generator
+
         mock_socket.__aiter__ = mock_async_iter
 
-        with patch("jev_imrp.ingest.shoonya_feed_client.websockets.connect",
-                   return_value=mock_socket):
+        with patch(
+            "jev_imrp.ingest.shoonya_feed_client.websockets.connect", return_value=mock_socket
+        ):
             await self.client.connect()
 
             # Verify connect frame was sent
@@ -126,7 +130,7 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
         mock_socket = AsyncMock()
         self.client.connection = mock_socket
 
-        with patch.object(self.client, "_resolve_symbol_to_token") as mock_resolve:
+        with patch.object(self.client, "_resolve_symbol_to_token"):
             await self.client.subscribe([])
 
             mock_socket.send.assert_not_called()
@@ -190,8 +194,9 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
         mock_socket.__aexit__ = AsyncMock(return_value=None)
         mock_socket.__aiter__ = MagicMock(return_value=iter([]))
 
-        with patch("jev_imrp.ingest.shoonya_feed_client.websockets.connect",
-                   return_value=mock_socket):
+        with patch(
+            "jev_imrp.ingest.shoonya_feed_client.websockets.connect", return_value=mock_socket
+        ):
             await self.client.start()
 
             self.assertTrue(self.client.running)
@@ -201,10 +206,8 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
         self.client.running = False
         if self.client.task:
             self.client.task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.client.task
-            except asyncio.CancelledError:
-                pass
 
     async def test_start_sets_running_flag(self):
         """Test that start() sets running flag."""
@@ -213,8 +216,9 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
         mock_socket.__aexit__ = AsyncMock(return_value=None)
         mock_socket.__aiter__ = MagicMock(return_value=iter([]))
 
-        with patch("jev_imrp.ingest.shoonya_feed_client.websockets.connect",
-                   return_value=mock_socket):
+        with patch(
+            "jev_imrp.ingest.shoonya_feed_client.websockets.connect", return_value=mock_socket
+        ):
             await self.client.start()
 
             self.assertTrue(self.client.running)
@@ -224,10 +228,8 @@ class TestShoonyaFeedClient(unittest.IsolatedAsyncioTestCase):
             self.client.running = False
             if self.client.task:
                 self.client.task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self.client.task
-                except asyncio.CancelledError:
-                    pass
 
     async def test_stop_when_not_running(self):
         """Test stop when not running is a no-op."""

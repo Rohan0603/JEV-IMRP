@@ -59,9 +59,7 @@ def new_event_id(session_id: str, generation: int, sequence: int) -> str:
     Deterministic on purpose: replaying the same recorded sequence produces the
     same ids, so replay parity can be compared field by field (plan 5.6.10).
     """
-    digest = hashlib.sha256(
-        f"{session_id}|{generation}|{sequence}".encode()
-    ).hexdigest()
+    digest = hashlib.sha256(f"{session_id}|{generation}|{sequence}".encode()).hexdigest()
     return digest[:32]
 
 

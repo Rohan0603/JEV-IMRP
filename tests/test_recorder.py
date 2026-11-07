@@ -400,10 +400,6 @@ def test_instrument_master_reports_unresolved_tokens():
     assert len(tick_sizes) == 20
 
 
-
-
-
-
 def test_flush_batch_makes_the_open_batch_durable_without_closing(tmp_path):
     root = tmp_path / "raw"
     recorder = make_recorder(root, WriterSettings(max_rows_per_file=1000))

@@ -15,7 +15,6 @@ from __future__ import annotations
 import shutil
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -28,7 +27,7 @@ from jev_imrp.candidates import (
     synthetic_quote_rows,
 )
 from jev_imrp.common.ledger import LEDGER_PATH, load_ledger
-from jev_imrp.common.timeutils import SESSION_OPEN, ensure_aware, from_ist, ist_session_date, to_utc
+from jev_imrp.common.timeutils import SESSION_OPEN, from_ist, to_utc
 from jev_imrp.models import (
     Decision,
     LinearBaselinePolicy,
@@ -88,7 +87,9 @@ def _make_candidate(
         strategy_version="synthetic_v1",
         symbol=symbol,
         side=side,
-        decision_timestamp_utc=to_utc(from_ist(session, SESSION_OPEN) + timedelta(minutes=minutes_since_open)),
+        decision_timestamp_utc=to_utc(
+            from_ist(session, SESSION_OPEN) + timedelta(minutes=minutes_since_open)
+        ),
         source_event_id=f"evt-{signal_id}",
         intended_horizon_minutes=30,
         feature_snapshot_id=f"fs-{signal_id[:8]}",
@@ -100,9 +101,7 @@ def _make_candidate(
     )
 
 
-def _build_labels(
-    candidates: list[CandidateRecord], win_rate: float = 0.55
-) -> list[bool]:
+def _build_labels(candidates: list[CandidateRecord], win_rate: float = 0.55) -> list[bool]:
     """Give a deterministic label stream (roughly ``win_rate`` positive)."""
     import random
 
@@ -115,7 +114,7 @@ def _fitted_policy(seed: int = 0) -> LinearBaselinePolicy:
     policy = LinearBaselinePolicy(seed=seed)
     # Build ~100 labelled candidates spanning TRAIN_SESSIONS.
     candidates_list: list[CandidateRecord] = []
-    for i, session in enumerate(TRAIN_SESSIONS):
+    for _i, session in enumerate(TRAIN_SESSIONS):
         for j in range(25):
             candidates_list.append(
                 _make_candidate(
@@ -378,10 +377,7 @@ def test_zero_variance_features_does_not_crash() -> None:
     # sklearn's StandardScaler will produce NaN for zero-variance features,
     # but the pipeline still converges for the remaining dims.
     # Ensure all LINEAR_FEATURES are present to avoid NoneType errors.
-    constants = [
-        {name: 1.0 for name in LINEAR_FEATURES}
-        for _ in range(20)
-    ]
+    constants = [{name: 1.0 for name in LINEAR_FEATURES} for _ in range(20)]
     labels = [True, False] * 10  # balanced so we have both classes
     policy.fit(constants, labels)
     assert policy._fitted
@@ -390,10 +386,7 @@ def test_zero_variance_features_does_not_crash() -> None:
 def test_extreme_costs_no_crash() -> None:
     """Very large feature values should not raise (clamped by scaler)."""
     policy = LinearBaselinePolicy()
-    extreme = [
-        {k: 1e6 if k == "atr_pct" else 0.0 for k in _FULL_FEATURES}
-        for _ in range(20)
-    ]
+    extreme = [{k: 1e6 if k == "atr_pct" else 0.0 for k in _FULL_FEATURES} for _ in range(20)]
     labels = [True, False] * 10  # balanced so we have both classes
     policy.fit(extreme, labels)
     assert policy._fitted
@@ -421,7 +414,6 @@ def test_config_returns_fixed_hyperparameters() -> None:
 
 
 def test_linear_features_are_numeric_subset_of_training_features() -> None:
-    from jev_imrp.features.definitions import TRAINING_FEATURES
 
     assert set(LINEAR_POLICY_VERSION) or True  # placeholder — just ensure import works
 

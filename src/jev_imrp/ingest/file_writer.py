@@ -103,9 +103,13 @@ def _fsync_path(path: Path) -> None:
 class RawEventWriter:
     """Append-only, bounded-batch Parquet writer with a durable manifest."""
 
-    def __init__(self, root: str | os.PathLike[str], session_id: str,
-                 settings: WriterSettings | None = None,
-                 generation: int = 1) -> None:
+    def __init__(
+        self,
+        root: str | os.PathLike[str],
+        session_id: str,
+        settings: WriterSettings | None = None,
+        generation: int = 1,
+    ) -> None:
         self.root = Path(root)
         self.session_id = session_id
         self.settings = settings or WriterSettings()
@@ -295,9 +299,7 @@ def find_unfinalized(root: str | os.PathLike[str]) -> list[Path]:
     been dealt with explicitly and must not be reported again.
     """
     return sorted(
-        path
-        for path in Path(root).rglob(f"*{TEMP_SUFFIX}")
-        if QUARANTINE_DIR not in path.parts
+        path for path in Path(root).rglob(f"*{TEMP_SUFFIX}") if QUARANTINE_DIR not in path.parts
     )
 
 
