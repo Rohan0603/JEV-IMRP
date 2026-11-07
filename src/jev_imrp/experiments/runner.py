@@ -18,7 +18,10 @@ one.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+import os
+import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -419,9 +422,20 @@ class JevRunner:
             / f"{candidate.candidate_id}-a{attempt_number:02d}.json"
         )
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(payload, sort_keys=True, indent=2, default=str), encoding="utf-8"
+        content = json.dumps(payload, sort_keys=True, indent=2, default=str)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
         )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            with contextlib.suppress(FileExistsError):
+                os.link(temporary_name, path)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(temporary_name)
         return str(path)
 
     # -- the stream --------------------------------------------------------

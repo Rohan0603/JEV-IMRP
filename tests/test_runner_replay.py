@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -47,7 +48,13 @@ def _candidate(candidate_id: str) -> Candidate:
     )
 
 
-def _runner(client: JevClient, store: AttemptStore, *, experiment_id: str) -> JevRunner:
+def _runner(
+    client: JevClient,
+    store: AttemptStore,
+    *,
+    experiment_id: str,
+    raw_response_dir: str | None = None,
+) -> JevRunner:
     return JevRunner(
         client=client,
         store=store,
@@ -55,6 +62,7 @@ def _runner(client: JevClient, store: AttemptStore, *, experiment_id: str) -> Je
         questions=(Question(id="q", type="box", instructions="classify"),),
         model_id="jev-1.13.0",
         confirmatory=True,
+        raw_response_dir=raw_response_dir,
     )
 
 
@@ -196,6 +204,23 @@ async def _assert_raw_responses_are_unique_per_attempt(tmp_path: Path) -> None:
     assert attempts[0].raw_response_ref != attempts[1].raw_response_ref
     assert Path(attempts[0].raw_response_ref).read_text(encoding="utf-8").find('"attempt": 0') >= 0
     assert Path(attempts[1].raw_response_ref).read_text(encoding="utf-8").find('"attempt": 1') >= 0
+
+
+def test_raw_response_publication_is_no_clobber_for_same_attempt(tmp_path: Path) -> None:
+    runner = _runner(
+        CountingClient(),
+        AttemptStore(tmp_path / "attempts.jsonl"),
+        experiment_id="exp-no-clobber",
+        raw_response_dir=str(tmp_path / "raw"),
+    )
+    candidate = _candidate("candidate-1")
+
+    first = runner._store_raw({"attempt": 0, "value": "first"}, candidate, 0)
+    second = runner._store_raw({"attempt": 0, "value": "second"}, candidate, 0)
+
+    assert first == second
+    assert first is not None
+    assert json.loads(Path(first).read_text(encoding="utf-8"))["value"] == "first"
 
 
 def test_unexpected_client_exception_is_durably_recorded(tmp_path: Path) -> None:
