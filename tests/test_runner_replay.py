@@ -6,7 +6,7 @@ import pytest
 
 from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.runner import JevRunner
-from jev_imrp.models.jev_client import CallResult, Candidate, JevClient, Question
+from jev_imrp.models.jev_client import CallResult, Candidate, JevClient, Question, RetryPolicy
 from jev_imrp.models.jev_mock import MockConfig, MockJevClient
 
 
@@ -95,6 +95,51 @@ async def _assert_restart_replays_terminal_attempt_without_recalling_client(tmp_
 
     assert first.decision_for(candidate.candidate_id).terminal == "accept"
     assert second.decision_for(candidate.candidate_id).terminal == "accept"
+    assert client.calls == 1
+    assert len(store.attempts()) == 1
+
+
+def test_replay_fails_closed_when_request_contract_changes(tmp_path: Path) -> None:
+    asyncio.run(_assert_replay_fails_closed_when_request_contract_changes(tmp_path))
+
+
+async def _assert_replay_fails_closed_when_request_contract_changes(tmp_path: Path) -> None:
+    client = CountingClient()
+    store = AttemptStore(tmp_path / "attempts.jsonl")
+    candidate = _candidate("candidate-1")
+    questions = (Question(id="q", type="box", instructions="classify"),)
+    first = await JevRunner(
+        client=client,
+        store=store,
+        experiment_id="exp-contract",
+        questions=questions,
+        model_id="jev-1.13.0",
+        confirmatory=True,
+    ).run((candidate,))
+
+    changed = Candidate(
+        candidate_id=candidate.candidate_id,
+        symbol=candidate.symbol,
+        side=candidate.side,
+        decision_timestamp_utc=candidate.decision_timestamp_utc,
+        horizon_minutes=candidate.horizon_minutes,
+        features={"new_feature": 1},
+    )
+    second = await JevRunner(
+        client=client,
+        store=store,
+        experiment_id="exp-contract",
+        questions=questions,
+        model_id="jev-1.13.0",
+        failure_policy="reject",
+        retry=RetryPolicy(max_retries=0),
+        confirmatory=True,
+    ).run((changed,))
+
+    assert first.decision_for(candidate.candidate_id).terminal == "accept"
+    decision = second.decision_for(candidate.candidate_id)
+    assert decision.terminal == "reject"
+    assert decision.failure_reason == "replay_contract_mismatch"
     assert client.calls == 1
     assert len(store.attempts()) == 1
 

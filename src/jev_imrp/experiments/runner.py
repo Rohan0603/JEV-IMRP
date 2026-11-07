@@ -260,7 +260,8 @@ class JevRunner:
     async def _run_one(self, candidate: Candidate, state: dict[str, Any]) -> _AttemptOutcome:
         """Send one state with bounded retries, persisting every try."""
         request = build_request(state, self.model_id, self.questions)
-        outcome = _AttemptOutcome(payload_hash=canonical_hash(state))
+        contract_hash = canonical_hash(self._request_contract(request))
+        outcome = _AttemptOutcome(payload_hash=contract_hash)
         existing = [
             attempt
             for attempt in self.store.for_candidate(candidate.candidate_id)
@@ -269,6 +270,16 @@ class JevRunner:
         ]
         if existing:
             latest = max(existing, key=lambda attempt: attempt.retry_count)
+            if latest.payload_hash != contract_hash:
+                _LOG.error(
+                    "jev replay contract mismatch experiment=%s candidate=%s",
+                    self.experiment_id,
+                    candidate.candidate_id,
+                )
+                return _AttemptOutcome(
+                    failure_reason="replay_contract_mismatch",
+                    payload_hash=contract_hash,
+                )
             outcome = _AttemptOutcome(
                 attempt_ids=[
                     attempt.attempt_id for attempt in sorted(existing, key=lambda a: a.retry_count)
@@ -294,7 +305,12 @@ class JevRunner:
             start_attempt = latest.retry_count + 1
         else:
             start_attempt = 0
-        for attempt_number in range(start_attempt, self.retry.max_retries + 1):
+        end_attempt = self.retry.max_retries
+        if existing and resumable_cancellation:
+            # Cancellation may happen after the provider accepted the request.
+            # Permit one explicit recovery call even when normal retries are zero.
+            end_attempt = max(end_attempt, start_attempt)
+        for attempt_number in range(start_attempt, end_attempt + 1):
             started = time.perf_counter()
             try:
                 result: CallResult = await self.client.answer(
@@ -343,6 +359,21 @@ class JevRunner:
             )
             await asyncio.sleep(delay)
         return outcome  # pragma: no cover - the loop always returns
+
+    def _request_contract(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Return the versioned request/policy identity used for replay."""
+        return {
+            "schema": "jev_request_contract_v2",
+            "request": request,
+            "failure_policy": self.failure_policy,
+            "execution_mode": self.client.execution_mode,
+            "retry": {
+                "max_retries": self.retry.max_retries,
+                "base_delay_s": self.retry.base_delay_s,
+                "max_delay_s": self.retry.max_delay_s,
+                "status_codes": list(self.retry.status_codes),
+            },
+        }
 
     def _record(
         self,

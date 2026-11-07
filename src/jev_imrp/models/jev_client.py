@@ -629,8 +629,21 @@ def attempt_id_for(
     attempt_number: int,
     execution_mode: ExecutionMode,
 ) -> str:
-    """Deterministic, mode-scoped attempt id for idempotent reruns."""
-    return f"{experiment_id}:{candidate_id}:{execution_mode}:a{attempt_number:02d}"
+    """Deterministic, collision-safe id for idempotent reruns.
+
+    The v1 colon-delimited form remains readable from existing stores, but is
+    not emitted because identifiers containing ``:`` could collide.
+    """
+    identity = canonical_json(
+        {
+            "schema": "jev_attempt_id_v2",
+            "experiment_id": experiment_id,
+            "candidate_id": candidate_id,
+            "execution_mode": execution_mode,
+            "attempt_number": attempt_number,
+        }
+    ).encode("utf-8")
+    return f"jev-a2-{hashlib.sha256(identity).hexdigest()}"
 
 
 # --------------------------------------------------------------------------
