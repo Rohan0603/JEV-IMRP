@@ -1,0 +1,3 @@
+# Enforce the structured Chief-owned issue form in the GitHub UI.
+# API-created issues must still pass the same governance validator.
+blank_issues_enabled: false
