@@ -19,6 +19,10 @@ class FyersInstrument:
     series: str
     status: str
     master_sha256: str
+    #: FYERS exchange token used in ``<type>|<segment>|<token>`` HSM topics.
+    #: Optional here so older callers can still validate symbol mapping; the
+    #: subscription planner fails closed when it is missing.
+    exchange_token: str | None = None
 
 
 _PLAIN_SYMBOL = re.compile(r"^[A-Z][A-Z0-9&.-]*$")
@@ -76,9 +80,32 @@ def build_fyers_mapping(
                 series=series,
                 status=status,
                 master_sha256=master_sha256,
+                exchange_token=_exchange_token(matched_row),
             )
         )
     return result
+
+
+def _exchange_token(row: Mapping[str, Any]) -> str | None:
+    """Read the FYERS exchange token from the master row, or return None.
+
+    The official master exposes a 14-digit ``fyToken`` whose last digits are the
+    exchange token (the reference SDK uses ``fyToken[10:]``). A row that already
+    carries ``exchange_token``/``token`` is accepted as-is, including synthetic
+    test tokens such as ``SYNTH2885``.
+    """
+    for key in ("exchange_token", "exch_token", "fyToken", "fy_token", "token"):
+        value = row.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        if text.isdigit() and len(text) > 10:
+            text = text[10:]
+        if text:
+            return text
+    return None
 
 
 def _validate_hash(value: str) -> None:
