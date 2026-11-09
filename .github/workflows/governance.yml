@@ -1,0 +1,72 @@
+name: Agent Governance CI
+
+# Template-safe: unit tests run without Project credentials. The scheduled
+# GitHub Projects v2 audit runs only when the project ID is configured.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '20 2 * * *'
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: governance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-tests:
+    name: Policy validator tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile the validator
+        run: python -m py_compile scripts/validate_governance.py scripts/test_validate_governance.py
+      - name: Run offline governance tests
+        run: python -m unittest discover -s scripts -p 'test_*.py' -v
+
+  live-audit:
+    name: Project read-only audit
+    # Each generated repository must configure GH_PROJECT_NODE_ID first.
+    # Missing project config deliberately skips the remote audit; CI unit tests still run.
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && vars.GH_PROJECT_NODE_ID != '' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_PROJECTS_READ_TOKEN }}
+      PROJECT_ID: ${{ vars.GH_PROJECT_NODE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate read-only audit credentials
+        shell: bash
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Missing GH_PROJECTS_READ_TOKEN repository secret"
+            exit 2
+          fi
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::Missing GH_PROJECT_NODE_ID repository variable"
+            exit 2
+          fi
+      - name: Audit Issue routes and GitHub Project status
+        run: |
+          python scripts/validate_governance.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --project-id "$PROJECT_ID" \
+            --output governance-report.json
+      - name: Upload audit evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-audit-report
+          path: governance-report.json
+          if-no-files-found: ignore

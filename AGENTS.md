@@ -1,3 +1,17 @@
+# JEV-IMRP — current GitHub Chief/Worker governance (2026-11-09)
+
+**Task authority migration:** GitHub Issues and a verified GitHub Projects v2 board are the intended development queue, with roles `chief`, `worker`, and Chief-managed `human`. Existing labels or comments do NOT prove Project Status/Priority, and this PR does not configure a Project; keep those fields **NOT VERIFIED** until an authorized runtime reads them back. Chief sets first-handoff `GITHUB METADATA SETUP`; owner-invoked `worker + metadata-bootstrap` may perform **only approved metadata operations**, followed by return to Chief. Product implementation requires separate Project `Ready` read-back and full DoR.
+
+**Agents are never launched by GitHub changes.** The owner alone manually invokes/schedules Chief and Worker tools. No automated dispatcher, trading or live order placement is authorized by this PR.
+
+**JEV-IMRP safety:** Preserve existing source-code/finance/security/testing and authorship constraints below. **Do not reactivate Shoonya:** the historical Shoonya broker-contract section below describes an older integration; owner policy excludes Shoonya from new implementations. Do not silently substitute a broker. Retain data-only/Analyze-mode testing and never place live orders without separate authorization.
+
+**Canonical portable contract:** `docs/GITHUB_AGENT_GOVERNANCE.md`. This current GitHub routing section supersedes legacy task-tool instructions only; existing product-specific safety rules remain binding. Existing source files and CI unchanged.
+
+---
+
+## Preserved JEV-IMRP-specific instructions
+
 # Project rules
 
 ## Attribution
