@@ -107,6 +107,6 @@
     "live_measurement": "NOT RUN"
   },
   "live_capture": "NOT RUN",
-  "fixture_sha256": "270c5a06262bf6822c2cd9cf98caa6039fcf10379779603cf0ee53c679dd7130",
+  "fixture_sha256": "093b1a30124d7ff8aecde9c20027472d2b991fee5e50239ea078ca3a10b11bca",
   "fixture_file": "sanitized_packets.json"
 }
