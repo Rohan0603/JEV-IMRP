@@ -5,10 +5,10 @@ when the normalized state it produces is invalid, parser-errored or unknown.
 Downstream stages decide usability from the derived state, never by dropping
 the raw evidence.
 
-Feed-clock caveat: the Shoonya feed documents ``ft`` only as feed time in Unix
-epoch seconds. Nothing deeper about its clock semantics is verified. This module
-therefore stores the raw string untouched next to a parsed UTC value, and never
-substitutes local receive time for it.
+Feed-clock caveat: provider timestamp semantics are not assumed beyond the
+declared adapter contract. This module therefore stores the raw string
+untouched next to a parsed UTC value, and never substitutes local receive time
+for it.
 """
 
 from __future__ import annotations
@@ -59,7 +59,9 @@ def new_event_id(session_id: str, generation: int, sequence: int) -> str:
     Deterministic on purpose: replaying the same recorded sequence produces the
     same ids, so replay parity can be compared field by field (plan 5.6.10).
     """
-    digest = hashlib.sha256(f"{session_id}|{generation}|{sequence}".encode()).hexdigest()
+    digest = hashlib.sha256(
+        f"{session_id}|{generation}|{sequence}".encode()
+    ).hexdigest()
     return digest[:32]
 
 
