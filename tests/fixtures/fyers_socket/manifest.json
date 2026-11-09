@@ -1,0 +1,112 @@
+{
+  "data_origin": "synthetic",
+  "warning": "SYNTHETIC: hand-built frames encoded from the documented FYERS v3 wire format. Not a market capture; do not use for trading.",
+  "provider": "FYERS",
+  "api_version": "v3",
+  "data_socket_version": "HSM v1-5",
+  "endpoint": "wss://socket.fyers.in/hsm/v1-5/prod",
+  "reference_sdk": "fyers_apiv3==3.2.1",
+  "parser_version": "fyers_socket_v0",
+  "protocol": {
+    "transport": "websocket-binary",
+    "length_prefix": "uint16 big-endian, bytes after the length field",
+    "response_types": {
+      "1": "auth",
+      "4": "subscribe",
+      "5": "unsubscribe",
+      "6": "data",
+      "7": "pause",
+      "8": "resume",
+      "12": "mode",
+      "51": "custom"
+    },
+    "block_types": {
+      "83": "snapshot",
+      "85": "full",
+      "76": "lite"
+    },
+    "absent_sentinel": -2147483648,
+    "price_scaling": "raw / (10**precision * multiplier)",
+    "topic_id_byte_order": {
+      "decoded_as": "little-endian",
+      "evidence": "fyers_apiv3==3.2.1 unpacks topic ids with native H on little-endian hosts",
+      "status": "OPEN: Node SDK is minified and the JS docs body is not fetchable; correlation is unaffected because snapshot and incremental frames are decoded identically"
+    }
+  },
+  "quote_clock": {
+    "source_fields": {
+      "sf": [
+        "exch_feed_time",
+        "last_traded_time"
+      ],
+      "if": [
+        "exch_feed_time"
+      ],
+      "dp": []
+    },
+    "documented_unit": "unix_epoch_seconds",
+    "plausibility_window_epoch_seconds": [
+      946684800,
+      4102444800
+    ],
+    "policy": "never reinterpret an implausible value as ms/us and never substitute local time; flag source_clock_implausible and keep the raw integer",
+    "freshness_clock": "monotonic receipt clock (time.monotonic_ns)",
+    "live_unit_verification": "NOT RUN"
+  },
+  "l1_availability": {
+    "sf": {
+      "bid": [
+        "bid_price",
+        "bid_size"
+      ],
+      "ask": [
+        "ask_price",
+        "ask_size"
+      ],
+      "source_time": true
+    },
+    "dp": {
+      "bid": [
+        "bid_price1",
+        "bid_size1"
+      ],
+      "ask": [
+        "ask_price1",
+        "ask_size1"
+      ],
+      "depth_levels": 5,
+      "source_time": false
+    },
+    "if": {
+      "bid": [],
+      "ask": [],
+      "source_time": true
+    }
+  },
+  "reconnect": {
+    "server_persists_subscriptions": false,
+    "reference_sdk_behaviour": "clears topic maps and re-runs on_connect; client must re-send every subscription",
+    "first_message_after_subscribe": "snapshot",
+    "generation_invalidation": true,
+    "plan_resubscription_returns_all": true,
+    "evidence": "offline replay of reconnect_snapshot_reliance in sanitized_packets.json"
+  },
+  "packet_rate": {
+    "method": "measure_packet_rate over the synthetic replay's receive-monotonic window",
+    "frames": 6,
+    "blocks": 9,
+    "duration_seconds": 0.5,
+    "frames_per_second": 12.0,
+    "blocks_per_second": 18.0,
+    "per_topic_type": {
+      "sf": 6,
+      "if": 1,
+      "dp": 2
+    },
+    "data_origin": "synthetic",
+    "live_measurement": "NOT RUN"
+  },
+  "live_capture": "NOT RUN",
+  "fixture_sha256": "270c5a06262bf6822c2cd9cf98caa6039fcf10379779603cf0ee53c679dd7130",
+  "fixture_file": "sanitized_packets.json"
+}
