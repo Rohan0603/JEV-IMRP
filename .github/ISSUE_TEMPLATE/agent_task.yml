@@ -1,0 +1,117 @@
+name: Agent work item
+# Install labels chief, worker, human and metadata-bootstrap before enabling this form.
+# Do not specify Projects in frontmatter: auto-add and verified metadata-bootstrap are supported.
+description: Create a tracked Chief-owned task that can later be certified for Worker.
+title: "[TASK] "
+labels:
+  - chief
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Ordinary implementation requires verified GitHub Project membership and Ready.
+        If Chief cannot configure metadata, a first handoff may be worker +
+        metadata-bootstrap for metadata ONLY, then return to Chief for DoR. Never use
+        both chief and worker; human is optional only when chief is present.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and why
+      description: A single measurable outcome and expected behavior/user impact.
+      placeholder: What will exist or behave differently after acceptance?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and exclusions
+      description: Include affected components and explicit non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Verified baseline
+      description: Repository, branch, examined commit SHA, relevant files, APIs and versions.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+      description: Add native GitHub blocking/sub-issue relations after creation.
+      value: "- Dependencies: none known (verify)\n- Human-only gate: none known (verify)"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Evidence and decision context
+      description: Official sources with versions/dates, approved ADR references, constraints and assumptions.
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Detailed implementation or research recipe
+      description: Enough specifics for an independent smaller Worker model to act without chat history.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Verifiable acceptance criteria
+      value: |
+        - [ ] Given ... When ... Then ...
+        - [ ] Negative/failure case verified
+        - [ ] Regression test verifies unchanged behavior
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Exact verification/evidence plan
+      value: |
+        - Command, environment, expected result:
+        - CI workflow/check:
+        - Evidence artifact/URL:
+        - NOT RUN conditions:
+    validations:
+      required: true
+  - type: textarea
+    id: metadata
+    attributes:
+      label: GitHub metadata setup and first-handoff checklist
+      description: Chief specifies exact target Project and approved values. Mark VERIFIED, TO SET, NOT REQUIRED or NOT VERIFIED. Worker must not invent values.
+      value: |
+        - Target Project URL / owner / number:
+        - Project membership: NOT VERIFIED (or evidence URL)
+        - Project Status now / target for bootstrap: Backlog (verify)
+        - Priority chosen by Chief: P0 / P1 / P2 / P3 (choose with rationale)
+        - Milestone: existing name/number / owner-approved create / NOT REQUIRED
+        - Native dependencies and sub-issues: exact issue URLs / NOT REQUIRED
+        - Assignee / other required fields: exact values / NOT REQUIRED
+        - Metadata actions ChatGPT Chief cannot perform: exact checklist
+        - Worker mode: metadata-bootstrap ONLY if any readiness-critical item is unresolved
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risk, security, rollback and approvals
+      value: |
+        - Risk: Normal / Elevated / Critical
+        - Security/privacy/licensing/consent:
+        - Owner approval required? (why):
+        - Rollback/revert:
+    validations:
+      required: true
+  - type: checkboxes
+    id: governance
+    attributes:
+      label: Initial governance acknowledgement
+      options:
+        - label: I checked for duplicate issues and will add this issue to the correct GitHub Project.
+          required: true
+        - label: This issue starts Chief-owned. Any metadata-only Worker bootstrap must be explicitly scoped and return to Chief before implementation.
+          required: true
