@@ -1,0 +1,549 @@
+{
+  "schema": "fyers_offline_rest_cases_v1",
+  "data_origin": "synthetic",
+  "warning": "SYNTHETIC request/response samples modelled on documented FYERS v3 and OpenAlgo read-only contracts. No credential or live payload is included.",
+  "provider": "FYERS",
+  "api_version": "v3",
+  "oauth": {
+    "client_id": "synthetic-client-id",
+    "redirect_uri": "http://127.0.0.1:5000/fyers/callback",
+    "state": "synthetic-state",
+    "ttl_seconds": 300,
+    "cases": [
+      {
+        "name": "valid_single_use",
+        "ttl_seconds": 300,
+        "advance_seconds": 1,
+        "returned_state": "issued",
+        "consumes": 1,
+        "outcome": "ok"
+      },
+      {
+        "name": "reused_state",
+        "ttl_seconds": 300,
+        "advance_seconds": 1,
+        "returned_state": "issued",
+        "consumes": 2,
+        "outcome": "unknown or already used"
+      },
+      {
+        "name": "expired_state",
+        "ttl_seconds": 60,
+        "advance_seconds": 61,
+        "returned_state": "issued",
+        "consumes": 1,
+        "outcome": "expired"
+      },
+      {
+        "name": "unknown_state",
+        "ttl_seconds": 300,
+        "advance_seconds": 1,
+        "returned_state": "attacker-supplied",
+        "consumes": 1,
+        "outcome": "unknown or already used"
+      }
+    ],
+    "forbidden_in_authorization_url": [
+      "secret",
+      "api_secret",
+      "access_token"
+    ]
+  },
+  "history": {
+    "symbol": "NSE:RELIANCE-EQ",
+    "resolution": "1",
+    "range_from": "2026-07-01",
+    "range_to": "2026-07-01",
+    "zero_volume_minutes": {
+      "response": {
+        "s": "ok",
+        "candles": [
+          [
+            1782877500,
+            2500.0,
+            2502.0,
+            2498.0,
+            2501.0,
+            0
+          ],
+          [
+            1782877560,
+            2501.0,
+            2503.0,
+            2499.0,
+            2502.0,
+            0
+          ],
+          [
+            1782877620,
+            2502.0,
+            2504.0,
+            2500.0,
+            2503.0,
+            0
+          ],
+          [
+            1782877680,
+            2503.0,
+            2505.0,
+            2501.0,
+            2504.0,
+            0
+          ],
+          [
+            1782877740,
+            2504.0,
+            2506.0,
+            2502.0,
+            2505.0,
+            0
+          ],
+          [
+            1782877800,
+            2505.0,
+            2507.0,
+            2503.0,
+            2506.0,
+            0
+          ],
+          [
+            1782877860,
+            2506.0,
+            2508.0,
+            2504.0,
+            2507.0,
+            0
+          ],
+          [
+            1782877920,
+            2507.0,
+            2509.0,
+            2505.0,
+            2508.0,
+            0
+          ],
+          [
+            1782877980,
+            2508.0,
+            2510.0,
+            2506.0,
+            2509.0,
+            0
+          ],
+          [
+            1782878040,
+            2509.0,
+            2511.0,
+            2507.0,
+            2510.0,
+            0
+          ],
+          [
+            1782878100,
+            2510.0,
+            2512.0,
+            2508.0,
+            2511.0,
+            0
+          ],
+          [
+            1782878160,
+            2511.0,
+            2513.0,
+            2509.0,
+            2512.0,
+            0
+          ],
+          [
+            1782878220,
+            2512.0,
+            2514.0,
+            2510.0,
+            2513.0,
+            0
+          ],
+          [
+            1782878280,
+            2513.0,
+            2515.0,
+            2511.0,
+            2514.0,
+            0
+          ]
+        ]
+      },
+      "expected_rows": 14,
+      "expected_zero_volume_rows": 14,
+      "expected_spacing_seconds": 60
+    },
+    "incomplete_last_minute": {
+      "response": {
+        "s": "ok",
+        "candles": [
+          [
+            1782877500,
+            2500.0,
+            2502.0,
+            2498.0,
+            2501.0,
+            0
+          ],
+          [
+            1782877560,
+            2501.0,
+            2503.0,
+            2499.0,
+            2502.0,
+            0
+          ],
+          [
+            1782877620,
+            2502.0,
+            2504.0,
+            2500.0,
+            2503.0,
+            0
+          ],
+          [
+            1782877680,
+            2503.0,
+            2505.0,
+            2501.0,
+            2504.0,
+            0
+          ],
+          [
+            1782877740,
+            2504.0,
+            2506.0,
+            2502.0,
+            2505.0,
+            0
+          ],
+          [
+            1782877800,
+            2505.0,
+            2507.0,
+            2503.0,
+            2506.0,
+            0
+          ],
+          [
+            1782877860,
+            2506.0,
+            2508.0,
+            2504.0,
+            2507.0,
+            0
+          ],
+          [
+            1782877920,
+            2507.0,
+            2509.0,
+            2505.0,
+            2508.0,
+            0
+          ],
+          [
+            1782877980,
+            2508.0,
+            2510.0,
+            2506.0,
+            2509.0,
+            0
+          ],
+          [
+            1782878040,
+            2509.0,
+            2511.0,
+            2507.0,
+            2510.0,
+            0
+          ],
+          [
+            1782878100,
+            2510.0,
+            2512.0,
+            2508.0,
+            2511.0,
+            0
+          ],
+          [
+            1782878160,
+            2511.0,
+            2513.0,
+            2509.0,
+            2512.0,
+            0
+          ],
+          [
+            1782878220,
+            2512.0,
+            2514.0,
+            2510.0,
+            2513.0,
+            0
+          ],
+          [
+            1782878280,
+            2513.0,
+            2515.0,
+            2511.0,
+            2514.0,
+            0
+          ],
+          [
+            1782878340,
+            2514.0,
+            2516.0,
+            2512.0,
+            2515.0,
+            0
+          ]
+        ]
+      },
+      "as_of_utc": "2026-07-01T03:59:30+00:00",
+      "expected_rows_after_drop": 14
+    },
+    "no_data": {
+      "response": {
+        "s": "no_data"
+      },
+      "expected_rows": 0
+    },
+    "invalid_ohlc": {
+      "response": {
+        "s": "ok",
+        "candles": [
+          [
+            1782877500,
+            100,
+            90,
+            95,
+            99,
+            10
+          ]
+        ]
+      },
+      "expected_error": "invalid OHLCV bounds"
+    },
+    "rate_limited": {
+      "responses": [
+        {
+          "s": "error",
+          "code": 429,
+          "message": "Too many requests"
+        },
+        {
+          "s": "error",
+          "code": 429,
+          "message": "Too many requests"
+        },
+        {
+          "s": "ok",
+          "candles": [
+            [
+              1782877500,
+              2500.0,
+              2502.0,
+              2498.0,
+              2501.0,
+              0
+            ],
+            [
+              1782877560,
+              2501.0,
+              2503.0,
+              2499.0,
+              2502.0,
+              0
+            ],
+            [
+              1782877620,
+              2502.0,
+              2504.0,
+              2500.0,
+              2503.0,
+              0
+            ],
+            [
+              1782877680,
+              2503.0,
+              2505.0,
+              2501.0,
+              2504.0,
+              0
+            ],
+            [
+              1782877740,
+              2504.0,
+              2506.0,
+              2502.0,
+              2505.0,
+              0
+            ],
+            [
+              1782877800,
+              2505.0,
+              2507.0,
+              2503.0,
+              2506.0,
+              0
+            ],
+            [
+              1782877860,
+              2506.0,
+              2508.0,
+              2504.0,
+              2507.0,
+              0
+            ],
+            [
+              1782877920,
+              2507.0,
+              2509.0,
+              2505.0,
+              2508.0,
+              0
+            ],
+            [
+              1782877980,
+              2508.0,
+              2510.0,
+              2506.0,
+              2509.0,
+              0
+            ],
+            [
+              1782878040,
+              2509.0,
+              2511.0,
+              2507.0,
+              2510.0,
+              0
+            ],
+            [
+              1782878100,
+              2510.0,
+              2512.0,
+              2508.0,
+              2511.0,
+              0
+            ],
+            [
+              1782878160,
+              2511.0,
+              2513.0,
+              2509.0,
+              2512.0,
+              0
+            ],
+            [
+              1782878220,
+              2512.0,
+              2514.0,
+              2510.0,
+              2513.0,
+              0
+            ],
+            [
+              1782878280,
+              2513.0,
+              2515.0,
+              2511.0,
+              2514.0,
+              0
+            ]
+          ]
+        }
+      ],
+      "max_attempts": 3,
+      "expected_attempts": 3,
+      "expected_rows": 14
+    },
+    "persistent_429": {
+      "max_attempts": 2,
+      "response": {
+        "s": "error",
+        "code": 429,
+        "message": "Too many requests"
+      },
+      "expected_error": "history response failed"
+    }
+  },
+  "quota": {
+    "limits": {
+      "requests_per_second": 5,
+      "requests_per_minute": 50,
+      "requests_per_day": 5000,
+      "quote_symbols_per_request": 50,
+      "websocket_symbols_total": 100
+    },
+    "per_second_attempts": 6,
+    "expected_allowed": 5,
+    "quote_batch_over_limit": 51,
+    "websocket_symbols_over_limit": 101,
+    "expected_error": "would be exceeded"
+  },
+  "master": {
+    "master_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "rows": [
+      {
+        "symbol": "NSE:RELIANCE-EQ",
+        "status": "ACTIVE",
+        "series": "EQ",
+        "fyToken": "101000000002885"
+      },
+      {
+        "symbol": "NSE:SBIN-EQ",
+        "status": "ACTIVE",
+        "series": "EQ",
+        "fyToken": "101000000003045"
+      }
+    ],
+    "symbols": [
+      "RELIANCE",
+      "SBIN"
+    ],
+    "expected": [
+      {
+        "research_symbol": "RELIANCE",
+        "provider_symbol": "NSE:RELIANCE-EQ",
+        "exchange_token": "2885"
+      },
+      {
+        "research_symbol": "SBIN",
+        "provider_symbol": "NSE:SBIN-EQ",
+        "exchange_token": "3045"
+      }
+    ],
+    "missing_symbol_error": "missing FYERS master symbol",
+    "suspended_error": "suspended"
+  },
+  "openalgo_quote_without_timestamp": {
+    "response": {
+      "status": "success",
+      "data": {
+        "ltp": 2500.0,
+        "bid": 2499.5,
+        "ask": 2500.5
+      }
+    },
+    "expected_data": {
+      "ltp": 2500.0,
+      "bid": 2499.5,
+      "ask": 2500.5
+    },
+    "forbidden_added_keys": [
+      "timestamp",
+      "received_timestamp_utc",
+      "feed_timestamp_utc"
+    ]
+  },
+  "not_run": [
+    "live FYERS OAuth token exchange",
+    "live FYERS REST history or quote call",
+    "live WebSocket auth/subscribe handshake",
+    "live quota observation"
+  ]
+}

@@ -9,6 +9,7 @@ and the archived Shoonya adapter is retained for historical replay provenance.
 
 from __future__ import annotations
 
+from jev_imrp.ingest import legacy_shoonya
 from jev_imrp.ingest.data_health import (
     DataHealthReport,
     DataHealthThresholds,
@@ -59,11 +60,6 @@ from jev_imrp.ingest.fyers_symbol_master import (
     build_fyers_mapping,
     to_fyers_symbol,
 )
-from jev_imrp.ingest.historical_data_client import (
-    HistoricalDataError,
-    fetch_eod_chart_data,
-    fetch_tp_series_data,
-)
 from jev_imrp.ingest.openalgo_client import (
     OpenAlgoClient,
     OpenAlgoConfig,
@@ -85,15 +81,16 @@ from jev_imrp.ingest.raw_event import (
     empty_table,
     new_event_id,
 )
-from jev_imrp.ingest.shoonya_recorder import Recorder
-from jev_imrp.ingest.symbol_resolver import (
-    ResolvedToken,
-    SymbolResolutionError,
-    resolve_symbol,
-    resolve_symbols_batch,
-    resolve_via_master,
-    resolve_via_searchscrip,
-)
+
+
+def __getattr__(name: str) -> object:
+    """Fail-closed lazy loader for archived Shoonya exports.
+
+    Accessing any archived Shoonya name raises :class:`LegacyShoonyaDisabled`
+    unless ``JEV_ENABLE_LEGACY_SHOONYA=1`` is set.
+    """
+    return legacy_shoonya.legacy_export(name)
+
 
 __all__ = [
     "DEFAULT_STANDARD_LIMITS",

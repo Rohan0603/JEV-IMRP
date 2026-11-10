@@ -1,0 +1,320 @@
+{
+  "schema": "fyers_offline_fixture_manifest_v1",
+  "fixture_version": "2026-11-10",
+  "data_origin": "synthetic",
+  "warning": "SYNTHETIC fixtures. Replay-safe and offline; they are not a market capture, do not prove live FYERS behaviour, and must never gate live trading.",
+  "provider": "FYERS",
+  "api_version": "v3",
+  "data_socket_version": "HSM v1-5",
+  "provider_version": "fyers-data-socket-v3-hsm-v1-5",
+  "endpoint": "wss://socket.fyers.in/hsm/v1-5/prod",
+  "reference_sdk": "fyers_apiv3==3.2.1",
+  "parser_version": "fyers_socket_v0",
+  "source_documentation": [
+    "https://fyers.in/api-docs/v3/getting-started/"
+  ],
+  "encoding": "frames are hex-encoded ASCII; decoded bytes are the documented binary wire format",
+  "universe": {
+    "source": "config/universe.yaml",
+    "version": "v1",
+    "frozen_at_utc": "2026-10-17",
+    "size": 20,
+    "tick_size_inr": 0.05,
+    "modified_by_orc_114": false
+  },
+  "files": {
+    "sanitized_packets.json": {
+      "sha256": "8edc7ecf0ea1c866852ce5d950db2ac4ddde07bb08b161d746ace3723ab48f67",
+      "bytes": 7119,
+      "line_endings": "LF",
+      "frames": 15
+    },
+    "rest_cases.json": {
+      "sha256": "f0d77916086081d07d37f22cfd690277cdacb6a59c5811bcea319f37763718c0",
+      "bytes": 11175,
+      "line_endings": "LF"
+    }
+  },
+  "clock_policy": {
+    "provider_timestamp_only": true,
+    "local_receipt_time_not_substituted": true,
+    "missing_provider_time_is_null": true,
+    "implausible_epoch_is_null_with_reason": true,
+    "dp_has_no_source_time": true,
+    "live_unit_verification": "NOT RUN"
+  },
+  "packet_rate": {
+    "frames": 11,
+    "blocks": 11,
+    "duration_seconds": 1.0,
+    "frames_per_second": 11.0,
+    "blocks_per_second": 11.0,
+    "per_topic_type": {
+      "sf": 8,
+      "if": 1,
+      "dp": 2
+    },
+    "per_topic": {
+      "sf|nse_cm|SYNTH2885": 6,
+      "if|nse_cm|NIFTY50-INDEX": 1,
+      "dp|nse_cm|SYNTH2885": 2,
+      "sf|nse_cm|SYNTH3045": 2
+    }
+  },
+  "expectations": {
+    "auth_ok": {
+      "kind": "control",
+      "response_name": "cn",
+      "status": "K",
+      "parse_error": null
+    },
+    "subscribe_ok": {
+      "kind": "control",
+      "response_name": "sub",
+      "status": "K",
+      "parse_error": null
+    },
+    "snapshot_sf_reliance": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1782877800,
+      "source_time_utc": "2026-07-01T03:50:00+00:00",
+      "invalid_reasons": []
+    },
+    "snapshot_if_nifty": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": null,
+      "bid_qty_1": null,
+      "ask_price_1": null,
+      "ask_qty_1": null,
+      "last_price": 22000.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1782877800,
+      "source_time_utc": "2026-07-01T03:50:00+00:00",
+      "invalid_reasons": []
+    },
+    "snapshot_dp_reliance": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": null,
+      "bid_price_2": 2499.0,
+      "bid_price_3": 2498.5,
+      "source_time_raw": null,
+      "source_time_utc": null,
+      "invalid_reasons": []
+    },
+    "incremental_bid_ask_only": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "full",
+      "state_valid": true,
+      "bid_price_1": 2499.6,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.4,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": null,
+      "source_time_utc": null,
+      "invalid_reasons": []
+    },
+    "incremental_ltp_only": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "full",
+      "state_valid": true,
+      "bid_price_1": 2499.6,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.4,
+      "ask_qty_1": 12,
+      "last_price": 2500.5,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": null,
+      "source_time_utc": null,
+      "invalid_reasons": []
+    },
+    "missing_source_time_sf": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": null,
+      "source_time_utc": null,
+      "invalid_reasons": []
+    },
+    "implausible_source_time_sf": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1000,
+      "source_time_utc": null,
+      "invalid_reasons": [
+        "source_clock_implausible"
+      ]
+    },
+    "partial_depth_dp": {
+      "kind": "data",
+      "generation": 1,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": null,
+      "bid_price_2": 2499.0,
+      "bid_price_3": null,
+      "source_time_raw": null,
+      "source_time_utc": null,
+      "invalid_reasons": []
+    },
+    "reconnect_snapshot_sf_reliance": {
+      "kind": "data",
+      "generation": 2,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1782877800,
+      "source_time_utc": "2026-07-01T03:50:00+00:00",
+      "invalid_reasons": []
+    },
+    "duplicate_sf": {
+      "kind": "data",
+      "generation": 2,
+      "frame_kind": "snapshot",
+      "state_valid": true,
+      "bid_price_1": 2499.5,
+      "bid_qty_1": 10,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1782877800,
+      "source_time_utc": "2026-07-01T03:50:00+00:00",
+      "invalid_reasons": []
+    },
+    "after_hours_zero_bid_sf": {
+      "kind": "data",
+      "generation": 2,
+      "frame_kind": "snapshot",
+      "state_valid": false,
+      "bid_price_1": 0.0,
+      "bid_qty_1": 0,
+      "ask_price_1": 2500.5,
+      "ask_qty_1": 12,
+      "last_price": 2500.0,
+      "bid_price_2": null,
+      "bid_price_3": null,
+      "source_time_raw": 1782909000,
+      "source_time_utc": "2026-07-01T12:30:00+00:00",
+      "invalid_reasons": [
+        "non_positive_price",
+        "missing_size",
+        "price_off_tick",
+        "outside_session"
+      ]
+    },
+    "truncated_data": {
+      "kind": "invalid",
+      "response_name": "error",
+      "status": null,
+      "parse_error": "declared length 95 != actual 21"
+    },
+    "unknown_block_type": {
+      "kind": "invalid",
+      "response_name": "error",
+      "status": null,
+      "parse_error": "unknown scrip block type 99"
+    }
+  },
+  "reconnect": {
+    "generation_started": 2,
+    "topics_awaiting_snapshot": [
+      "dp|nse_cm|SYNTH2885",
+      "if|nse_cm|NIFTY50-INDEX",
+      "sf|nse_cm|SYNTH2885",
+      "sf|nse_cm|SYNTH3045"
+    ],
+    "topics_to_resubscribe": [
+      "dp|nse_cm|SYNTH2885",
+      "if|nse_cm|NIFTY50-INDEX",
+      "sf|nse_cm|SYNTH2885",
+      "sf|nse_cm|SYNTH3045"
+    ]
+  },
+  "duplicate_updates": {
+    "sf|nse_cm|SYNTH2885": 2
+  },
+  "tick_size_discrepancies": "NOT RUN: resolved by ORC-119, not by this fixture",
+  "live_capture": "NOT RUN",
+  "live_vs_replay_parity": "synthetic replay only; live capture NOT RUN",
+  "not_run": [
+    {
+      "item": "live FYERS WebSocket capture",
+      "reason": "requires production credentials and separate authorization"
+    },
+    {
+      "item": "live OAuth token exchange",
+      "reason": "no credential use in CI; state machine tested offline"
+    },
+    {
+      "item": "live REST history/quota observation",
+      "reason": "transports are injected; all fixtures synthetic"
+    },
+    {
+      "item": "13 NSE cash tick-size discrepancies",
+      "reason": "owned by ORC-119; frozen tick sizes are unchanged here"
+    },
+    {
+      "item": "live-vs-replay parity",
+      "reason": "only deterministic synthetic replay parity is claimed"
+    },
+    {
+      "item": "Windows CI runner",
+      "reason": "workflow runs ubuntu-24.04; local Windows run is manual evidence"
+    }
+  ]
+}

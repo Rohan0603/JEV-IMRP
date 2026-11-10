@@ -1,1 +1,1 @@
-tests/fixtures/fyers_socket/*.json text eol=lf
+tests/fixtures/fyers_socket/*.json text eol=lf\n\ntests/fixtures/fyers/*.json text eol=lf

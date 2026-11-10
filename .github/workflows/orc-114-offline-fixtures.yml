@@ -1,0 +1,59 @@
+# ORC-114 offline FYERS fixtures CI
+# Runs the fixture integrity tests and Shoonya regression scaffold.
+# Triggered on every PR and manual dispatch.
+
+name: ORC-114 offline FYERS fixtures
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: offline FYERS fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+
+      - name: Install project in editable mode
+        run: pip install -e ".[dev]"
+
+      - name: Run offline fixture tests
+        run: python -m pytest -q tests/test_fyers_offline_fixtures.py
+
+      - name: Run Shoonya regression scaffold
+        run: python -m pytest -q tests/test_shoonya_regression.py
+
+      - name: Ruff (changed files only)
+        if: always()
+        run: |
+          # Scope ruff to ORC-114 additions to avoid pre-existing legacy noise
+          python -m ruff check \
+            src/jev_imrp/ingest/legacy_shoonya.py \
+            src/jev_imrp/ingest/__init__.py \
+            tests/test_fyers_offline_fixtures.py \
+            tests/test_shoonya_regression.py \
+            tests/fixtures/fyers/
+
+      - name: Mypy (scoped, skip untyped deps)
+        if: always()
+        run: |
+          python -m mypy --follow-imports=skip \
+            src/jev_imrp/ingest/legacy_shoonya.py \
+            tests/test_fyers_offline_fixtures.py \
+            tests/test_shoonya_regression.py
+
+  # Note: generic ruff/mypy/pytest across the whole repo are handled by
+  # .github/workflows/quality.yml (ORC-61) and should pass separately.
