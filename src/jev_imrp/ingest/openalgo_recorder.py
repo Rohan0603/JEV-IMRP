@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from jev_imrp.common.logging import SECRET_NAMES
 from jev_imrp.ingest.feed_state import QuoteState, QuoteStateBook
 from jev_imrp.ingest.openalgo_client import parse_websocket_message
 from jev_imrp.ingest.raw_event import INGEST_NON_QUOTE, INGEST_OK, RawEvent, parse_feed_timestamp
@@ -103,7 +104,7 @@ class OpenAlgoRecorder:
             symbol = str(normalized["ti"])
             feed_raw = normalized.get("ft")
         else:
-            normalized = {"t": kind, "_openalgo_payload": payload}
+            normalized = {"t": kind, "_openalgo_payload": _redact_payload(payload)}
             message_type = kind
             status = INGEST_NON_QUOTE
             exchange = token = symbol = None
@@ -178,6 +179,22 @@ class OpenAlgoRecorder:
                         if "quantity" in level:
                             normalized[f"{size_key}{index}"] = level["quantity"]
         return normalized
+
+
+def _redact_payload(value: Any) -> Any:
+    """Redact credential-keyed values before a control frame is persisted."""
+    if isinstance(value, Mapping):
+        return {
+            key: "***REDACTED***"
+            if isinstance(key, str) and key.strip().lower() in SECRET_NAMES
+            else _redact_payload(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_payload(item) for item in value)
+    return value
 
 
 __all__ = ["OpenAlgoRecorder", "OpenAlgoRecorderCounters"]

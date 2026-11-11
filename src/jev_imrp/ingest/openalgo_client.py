@@ -59,6 +59,15 @@ class OpenAlgoConfig:
 
 Transport = Callable[[str, dict[str, object]], Mapping[str, object]]
 
+_READ_ONLY_ENDPOINTS = frozenset(
+    {
+        "/api/v1/symbol",
+        "/api/v1/quotes",
+        "/api/v1/depth",
+        "/api/v1/history",
+    }
+)
+
 
 def _urllib_transport(host: str) -> Transport:
     def send(path: str, payload: dict[str, object]) -> Mapping[str, object]:
@@ -93,6 +102,8 @@ class OpenAlgoClient:
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def _post(self, path: str, payload: dict[str, object]) -> Any:
+        if path not in _READ_ONLY_ENDPOINTS:
+            raise OpenAlgoProtocolError(f"not a read-only data endpoint: {path}")
         if self._quota is not None:
             try:
                 self._quota.acquire(self._clock())

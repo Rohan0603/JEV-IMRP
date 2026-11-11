@@ -48,6 +48,27 @@ def test_recorder_frames_never_include_order_actions() -> None:
     }
 
 
+def test_recorder_redacts_credentials_from_control_frames() -> None:
+    writer = FakeWriter()
+    recorder = OpenAlgoRecorder(writer)
+    event, state = recorder.feed(
+        {
+            "type": "auth",
+            "status": "success",
+            "api_key": "secret-key",
+            "nested": {"access_token": "access-secret"},
+        }
+    )
+
+    assert state is None
+    assert event.payload["_openalgo_payload"] == {
+        "type": "auth",
+        "status": "success",
+        "api_key": "***REDACTED***",
+        "nested": {"access_token": "***REDACTED***"},
+    }
+
+
 def test_recorder_can_batch_quote_and_depth_subscriptions() -> None:
     assert OpenAlgoRecorder.subscribe_batch_frame("NSE", ["RELIANCE", "TCS"], mode=3) == {
         "action": "subscribe",

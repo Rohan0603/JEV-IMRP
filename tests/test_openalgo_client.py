@@ -65,3 +65,12 @@ def test_websocket_parser_is_data_only() -> None:
     )[0] == "market_data"
     with pytest.raises(OpenAlgoProtocolError, match="unsupported message type"):
         parse_websocket_message(json.dumps({"type": "order_update"}))
+
+
+def test_private_post_rejects_non_data_endpoint_before_transport() -> None:
+    transport = FakeTransport({"status": "success", "data": {}})
+    client = OpenAlgoClient(config(), transport=transport)
+
+    with pytest.raises(OpenAlgoProtocolError, match="read-only data endpoint"):
+        client._post("/api/v1/placeorder", {})
+    assert transport.calls == []
