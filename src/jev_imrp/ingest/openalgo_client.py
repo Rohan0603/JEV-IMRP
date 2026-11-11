@@ -166,6 +166,9 @@ def parse_websocket_message(raw: str | bytes) -> tuple[str, dict[str, Any]]:
     if not isinstance(value, dict):
         raise OpenAlgoProtocolError("WebSocket message must be a valid JSON object")
     kind = value.get("type")
+    if kind is None and value.get("status") == "error":
+        # Live gateways emit error frames without a ``type`` discriminator.
+        kind = "error"
     if kind not in {"auth", "subscribe", "market_data", "quote", "depth", "error", "pong"}:
         raise OpenAlgoProtocolError(f"unsupported message type: {kind!r}")
     return str(kind), value
