@@ -93,6 +93,7 @@ FAILURE_REASONS: Final = (
     "alias_in_confirmatory",
     "client_error",
     "cancelled",
+    "replay_contract_mismatch",
 )
 
 
@@ -530,6 +531,7 @@ ATTEMPT_FIELDS: Final = (
     "answers",
     "input_tokens",
     "output_tokens",
+    "request_fingerprint",
 )
 
 
@@ -560,6 +562,7 @@ class Attempt:
     answers: tuple[ParsedAnswer, ...] = ()
     input_tokens: int | None = None
     output_tokens: int | None = None
+    request_fingerprint: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -587,6 +590,7 @@ class Attempt:
             "answers": [a.to_record() for a in self.answers],
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "request_fingerprint": self.request_fingerprint,
         }
 
     @classmethod
@@ -620,6 +624,7 @@ class Attempt:
             ),
             input_tokens=row.get("input_tokens"),
             output_tokens=row.get("output_tokens"),
+            request_fingerprint=row.get("request_fingerprint"),
         )
 
 
@@ -627,7 +632,7 @@ def attempt_id_for(
     experiment_id: str,
     candidate_id: str,
     attempt_number: int,
-    execution_mode: ExecutionMode,
+    execution_mode: ExecutionMode = "mocked",
 ) -> str:
     """Deterministic, collision-safe id for idempotent reruns.
 
@@ -707,7 +712,9 @@ class RetryPolicy:
         """Exponential backoff, honouring ``retry-after`` when the server sends it."""
         if retry_after:
             try:
-                return float(max(0.0, min(float(retry_after), self.max_delay_s)))
+                requested = float(retry_after)
+                if requested >= 0.0:
+                    return float(min(requested, self.max_delay_s))
             except ValueError:
                 pass
         return float(min(self.base_delay_s * (2 ** (retry_count - 1)), self.max_delay_s))

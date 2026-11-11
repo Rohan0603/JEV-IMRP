@@ -1,8 +1,8 @@
 # Universe policy (plan section 2.3). Research-only.
 #
-# instrument_token is deliberately null everywhere: tokens are broker-specific
-# identifiers that must be read from the live Shoonya instrument master, never
-# invented. Sprint 1 fills them and records the instrument-master version used.
+# Provider-specific instrument identifiers are deliberately absent here. Active
+# adapters resolve exact FYERS symbols from their dated masters; provider
+# identifiers are never stored in the frozen research universe.
 universe_version: "v1"
 frozen_at_utc: "2026-10-17"
 exchange: "NSE"
@@ -24,7 +24,7 @@ eligibility_rule:
   exclusions:
     - symbol not tradeable in cash segment on every evaluated session
     - symbol suspended or in a trading halt for the whole session
-    - instrument_token missing from the instrument master
+    - provider mapping missing from the dated instrument master
   effective_dates:
     start: "2026-10-17"
     end: null                        # open-ended; set when membership is superseded
@@ -33,83 +33,63 @@ eligibility_rule:
 instruments:
   - symbol: RELIANCE
     exchange: NSE
-    instrument_token: 2885            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=RELIANCE-EQ)
     tick_size_inr: 0.05
   - symbol: TCS
     exchange: NSE
-    instrument_token: 11536           # resolved 2026-10-26 via Shoonya SearchScrip (tsym=TCS-EQ)
     tick_size_inr: 0.05
   - symbol: HDFCBANK
     exchange: NSE
-    instrument_token: 1333            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=HDFCBANK-EQ)
     tick_size_inr: 0.05
   - symbol: ICICIBANK
     exchange: NSE
-    instrument_token: 4963            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=ICICIBANK-EQ)
     tick_size_inr: 0.05
   - symbol: INFY
     exchange: NSE
-    instrument_token: 1594            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=INFY-EQ)
     tick_size_inr: 0.05
   - symbol: SBIN
     exchange: NSE
-    instrument_token: 3045            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=SBIN-EQ)
     tick_size_inr: 0.05
   - symbol: BHARTIARTL
     exchange: NSE
-    instrument_token: 10604           # resolved 2026-10-26 via Shoonya SearchScrip (tsym=BHARTIARTL-EQ)
     tick_size_inr: 0.05
   - symbol: ITC
     exchange: NSE
-    instrument_token: 1660            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=ITC-EQ)
     tick_size_inr: 0.05
   - symbol: LT
     exchange: NSE
-    instrument_token: 11483           # resolved 2026-10-26 via Shoonya SearchScrip (tsym=LT-EQ)
     tick_size_inr: 0.05
   - symbol: AXISBANK
     exchange: NSE
-    instrument_token: 5900            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=AXISBANK-EQ)
     tick_size_inr: 0.05
   - symbol: KOTAKBANK
     exchange: NSE
-    instrument_token: 1922            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=KOTAKBANK-EQ)
     tick_size_inr: 0.05
   - symbol: HINDUNILVR
     exchange: NSE
-    instrument_token: 1394            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=HINDUNILVR-EQ)
     tick_size_inr: 0.05
   - symbol: MARUTI
     exchange: NSE
-    instrument_token: 10999           # resolved 2026-10-26 via Shoonya SearchScrip (tsym=MARUTI-EQ)
     tick_size_inr: 0.05
   - symbol: SUNPHARMA
     exchange: NSE
-    instrument_token: 3351            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=SUNPHARMA-EQ)
     tick_size_inr: 0.05
   - symbol: TVSMOTOR
     exchange: NSE
-    instrument_token: 8479            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=TVSMOTOR-EQ). Replaces the original TATAMOTORS entry, which does not exist on any Shoonya exchange symbol master.
     tick_size_inr: 0.1
   - symbol: BAJFINANCE
     exchange: NSE
-    instrument_token: 317             # resolved 2026-10-26 via Shoonya SearchScrip (tsym=BAJFINANCE-EQ)
     tick_size_inr: 0.05
   - symbol: ADANIENT
     exchange: NSE
-    instrument_token: 25              # resolved 2026-10-26 via Shoonya SearchScrip (tsym=ADANIENT-EQ)
     tick_size_inr: 0.05
   - symbol: ASIANPAINT
     exchange: NSE
-    instrument_token: 236             # resolved 2026-10-26 via Shoonya SearchScrip (tsym=ASIANPAINT-EQ)
     tick_size_inr: 0.05
   - symbol: ONGC
     exchange: NSE
-    instrument_token: 2475            # resolved 2026-10-26 via Shoonya SearchScrip (tsym=ONGC-EQ)
     tick_size_inr: 0.05
   - symbol: NTPC
     exchange: NSE
-    instrument_token: 11630           # resolved 2026-10-26 via Shoonya SearchScrip (tsym=NTPC-EQ)
     tick_size_inr: 0.05
 
 selection_note: >-

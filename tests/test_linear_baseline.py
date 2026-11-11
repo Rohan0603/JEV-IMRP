@@ -414,7 +414,6 @@ def test_config_returns_fixed_hyperparameters() -> None:
 
 
 def test_linear_features_are_numeric_subset_of_training_features() -> None:
-
     assert set(LINEAR_POLICY_VERSION) or True  # placeholder — just ensure import works
 
 

@@ -120,9 +120,10 @@ def test_every_cost_rate_carries_source_and_verification() -> None:
 
 def test_known_verified_rates() -> None:
     components = load_cost_schedule()["versions"][0]["components"]
-    assert components["brokerage"]["cap_per_order_inr"] == 5.00
+    assert components["brokerage"]["cap_per_order_inr"] == 20.00
+    assert components["brokerage"]["source"].startswith("https://fyers.in/")
     assert components["stt"]["rate_pct"] == 0.025 and components["stt"]["sides"] == ["sell"]
-    assert components["exchange_transaction_fee_nse"]["rate_pct"] == 0.00307
+    assert components["exchange_transaction_fee_nse"]["rate_pct"] == 0.0030699
     assert components["exchange_transaction_fee_bse"]["applies_to_this_research"] is False
     assert components["sebi_turnover_fee"]["rate_per_crore_inr"] == 10
     # stamp duty must keep the dual lower-of form, not a bare percentage
@@ -130,8 +131,10 @@ def test_known_verified_rates() -> None:
     assert components["stamp_duty"]["absolute_per_crore_inr"] == 300
     assert components["stamp_duty"]["sides"] == ["buy"]
     assert components["gst"]["rate_pct"] == 18
-    assert components["ipft_and_other_levies"]["gst_treatment"] == ("per_broker_contract")
-    assert components["ipft_and_other_levies"]["included_by_default"] is False
+    assert components["ipft_and_other_levies"]["gst_treatment"] == (
+        "included_in_public_fyers_gst_base"
+    )
+    assert components["ipft_and_other_levies"]["included_by_default"] is True
 
 
 def test_derivatives_stt_change_is_recorded_out_of_scope() -> None:
@@ -153,13 +156,9 @@ def test_jev_model_is_pinned_and_contract_recorded() -> None:
     assert data["scoring"]["confidence_is_not_a_probability"] is True
 
 
-def test_instrument_tokens_are_not_invented() -> None:
-    """Sprint 1 resolved all tokens from the live Shoonya instrument master.
-
-    The original TATAMOTORS entry was replaced with TVSMOTOR-EQ because no
-    instrument named TATAMOTORS exists on any Shoonya exchange symbol master.
-    """
+def test_active_universe_is_provider_neutral() -> None:
+    """Active universe identity does not embed broker-specific identifiers."""
     instruments = load_universe()["instruments"]
     assert len(instruments) == 20
     assert len({i["symbol"] for i in instruments}) == 20
-    assert all(i["instrument_token"] is not None for i in instruments)
+    assert all("instrument_token" not in i for i in instruments)

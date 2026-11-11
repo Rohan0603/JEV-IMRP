@@ -283,7 +283,7 @@ def test_raw_response_reference_is_safe_for_path_like_identifiers(tmp_path: Path
     reference_path = Path(reference).resolve()
     raw_root = (tmp_path / "raw").resolve()
     assert reference_path.is_relative_to(raw_root)
-    assert len(reference_path.stem) == 64
+    assert len(reference_path.stem) == 68
     assert reference_path.suffix == ".json"
 
 

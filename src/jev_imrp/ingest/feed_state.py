@@ -1,6 +1,6 @@
-"""Quote-state reconstruction from the Shoonya market feed (plan section 5.4).
+"""Provider-neutral quote-state reconstruction (plan section 5.4).
 
-Verified feed contract (official Shoonya docs, verified 2026-10-17):
+Provider adapters supply an equivalent normalized event contract:
 
 * ``t:'t'`` subscribes, with ``k`` = ``#``-delimited ``EXCHANGE|TOKEN`` pairs;
   ``t:'u'`` unsubscribes and ``t:'uk'`` acknowledges.

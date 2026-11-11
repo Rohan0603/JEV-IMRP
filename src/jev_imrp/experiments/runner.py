@@ -72,6 +72,8 @@ COVERAGE_OUTPUTS: tuple[str, ...] = (
     "failure_reasons",
 )
 
+REQUEST_CONTRACT_VERSION = "jev_request_contract_v1"
+
 
 @dataclass(frozen=True)
 class Decision:
@@ -210,6 +212,7 @@ class _AttemptOutcome:
     input_tokens: int | None = None
     output_tokens: int | None = None
     payload_hash: str = ""
+    request_fingerprint: str = ""
 
 
 class JevRunner:
@@ -234,6 +237,8 @@ class JevRunner:
     ) -> None:
         if failure_policy not in FAILURE_POLICY_TERMINAL:
             raise ValueError(f"unknown failure policy: {failure_policy!r}")
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be positive")
         if not questions:
             raise ValueError("a run needs at least one question")
         if max_concurrency <= 0:
@@ -261,7 +266,22 @@ class JevRunner:
         """Send one state with bounded retries, persisting every try."""
         request = build_request(state, self.model_id, self.questions)
         contract_hash = canonical_hash(self._request_contract(request))
-        outcome = _AttemptOutcome(payload_hash=contract_hash)
+        request_fingerprint = canonical_hash(
+            {
+                "contract_version": REQUEST_CONTRACT_VERSION,
+                "state": state,
+                "request": request,
+                "model_id": self.model_id,
+                "prompt_version": self.prompt_version,
+                "prompt_hash": self.prompt_hash,
+                "question_ids": [q.id for q in self.questions],
+                "failure_policy": self.failure_policy,
+            }
+        )
+        outcome = _AttemptOutcome(
+            payload_hash=contract_hash,
+            request_fingerprint=request_fingerprint,
+        )
         existing = [
             attempt
             for attempt in self.store.for_candidate(candidate.candidate_id)
@@ -269,8 +289,12 @@ class JevRunner:
             and attempt.execution_mode == self.client.execution_mode
         ]
         if existing:
-            latest = max(existing, key=lambda attempt: attempt.retry_count)
-            if latest.payload_hash != contract_hash:
+            if any(
+                not attempt.request_fingerprint
+                or attempt.request_fingerprint != request_fingerprint
+                or attempt.payload_hash != contract_hash
+                for attempt in existing
+            ):
                 _LOG.error(
                     "jev replay contract mismatch experiment=%s candidate=%s",
                     self.experiment_id,
@@ -279,19 +303,9 @@ class JevRunner:
                 return _AttemptOutcome(
                     failure_reason="replay_contract_mismatch",
                     payload_hash=contract_hash,
+                    request_fingerprint=request_fingerprint,
                 )
-            outcome = _AttemptOutcome(
-                attempt_ids=[
-                    attempt.attempt_id for attempt in sorted(existing, key=lambda a: a.retry_count)
-                ],
-                answers=latest.answers,
-                returned_model_id=latest.returned_model_id,
-                failure_reason=latest.failure_reason,
-                http_status=latest.http_status,
-                input_tokens=latest.input_tokens,
-                output_tokens=latest.output_tokens,
-                payload_hash=latest.payload_hash,
-            )
+            latest = max(existing, key=lambda attempt: attempt.retry_count)
             retryable = (
                 latest.failure_reason is not None
                 and latest.http_status in self.retry.status_codes
@@ -301,7 +315,20 @@ class JevRunner:
             if latest.answers or (
                 latest.failure_reason is not None and not retryable and not resumable_cancellation
             ):
-                return outcome
+                return _AttemptOutcome(
+                    attempt_ids=[
+                        attempt.attempt_id
+                        for attempt in sorted(existing, key=lambda a: a.retry_count)
+                    ],
+                    answers=latest.answers,
+                    returned_model_id=latest.returned_model_id,
+                    failure_reason=latest.failure_reason,
+                    http_status=latest.http_status,
+                    input_tokens=latest.input_tokens,
+                    output_tokens=latest.output_tokens,
+                    payload_hash=latest.payload_hash,
+                    request_fingerprint=latest.request_fingerprint or request_fingerprint,
+                )
             start_attempt = latest.retry_count + 1
         else:
             start_attempt = 0
@@ -309,6 +336,11 @@ class JevRunner:
         if existing and resumable_cancellation:
             # Cancellation may happen after the provider accepted the request.
             # Permit one explicit recovery call even when normal retries are zero.
+            end_attempt = max(end_attempt, start_attempt)
+        else:
+            start_attempt = 0
+        end_attempt = self.retry.max_retries
+        if existing and resumable_cancellation:
             end_attempt = max(end_attempt, start_attempt)
         for attempt_number in range(start_attempt, end_attempt + 1):
             started = time.perf_counter()
@@ -434,6 +466,7 @@ class JevRunner:
             answers=answers,
             input_tokens=response.input_tokens if response else outcome.input_tokens,
             output_tokens=response.output_tokens if response else outcome.output_tokens,
+            request_fingerprint=outcome.request_fingerprint,
         )
         self.store.append(attempt)
         outcome.attempt_ids.append(attempt.attempt_id)
@@ -446,13 +479,14 @@ class JevRunner:
             input_tokens=response.input_tokens if response else outcome.input_tokens,
             output_tokens=response.output_tokens if response else outcome.output_tokens,
             payload_hash=outcome.payload_hash,
+            request_fingerprint=outcome.request_fingerprint,
         )
 
     def _store_raw(self, payload: Any, candidate: Candidate, attempt_number: int) -> str | None:
         """Keep the raw response next to the attempt record (plan 9.4)."""
         if payload is None or not self.raw_response_dir:
             return None
-        raw_root = Path(self.raw_response_dir).resolve()
+        root = Path(self.raw_response_dir).resolve()
         identity = json.dumps(
             [
                 self.experiment_id,
@@ -464,15 +498,17 @@ class JevRunner:
             separators=(",", ":"),
         )
         digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-        path = raw_root / f"{digest}.json"
+        path = root / self.client.execution_mode / f"{digest}-a{attempt_number:02d}.json"
+        if not path.is_relative_to(root):
+            raise ValueError("raw response path escaped configured root")
         path.parent.mkdir(parents=True, exist_ok=True)
-        content = json.dumps(payload, sort_keys=True, indent=2, default=str)
+        encoded = json.dumps(payload, sort_keys=True, indent=2, default=str)
         fd, temporary_name = tempfile.mkstemp(
             prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
         )
         try:
             with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
-                handle.write(content)
+                handle.write(encoded)
                 handle.flush()
                 os.fsync(handle.fileno())
             with contextlib.suppress(FileExistsError):

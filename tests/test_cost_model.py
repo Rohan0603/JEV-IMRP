@@ -66,27 +66,27 @@ def test_every_case_total_equals_sum_of_components(schedule: FeeSchedule) -> Non
 
 
 def test_brokerage_is_not_a_constant_rate(schedule: FeeSchedule) -> None:
-    """The Rs 5 cap makes the effective rate notional-dependent (plan 8.4)."""
-    on = date(2026, 10, 5)
+    """The FYERS Rs 20 cap makes the effective rate notional-dependent."""
+    on = date(2026, 11, 10)
     below = schedule.leg_fees(turnover_inr=Decimal(10000), side="buy", on=on)
-    above = schedule.leg_fees(turnover_inr=Decimal(20000), side="buy", on=on)
+    above = schedule.leg_fees(turnover_inr=Decimal(100000), side="buy", on=on)
     assert below.brokerage == Decimal("3.00")  # 0.03% of 10000
-    assert above.brokerage == Decimal("5.00")  # capped, not 6.00
+    assert above.brokerage == Decimal("20.00")  # capped, not 30.00
     below_rate_bps = below.brokerage / Decimal(10000) * Decimal(10_000)
-    above_rate_bps = above.brokerage / Decimal(20000) * Decimal(10_000)
+    above_rate_bps = above.brokerage / Decimal(100000) * Decimal(10_000)
     assert below_rate_bps == Decimal("3.0")  # 0.03% == 3 bps
-    assert above_rate_bps == Decimal("2.5")  # capped at Rs 5 -> 0.025% == 2.5 bps
+    assert above_rate_bps == Decimal("2.0")  # capped at Rs 20 -> 0.02% == 2 bps
     assert below_rate_bps != above_rate_bps
 
-    # Crossing point: 0.03% * T == Rs 5 at T = 5 / 0.0003 (~16666.67).
-    crossing = Decimal(5) / (Decimal("0.03") / Decimal(100))
+    # Crossing point: 0.03% * T == Rs 20 at T = 20 / 0.0003.
+    crossing = Decimal(20) / (Decimal("0.03") / Decimal(100))
     for turnover in (crossing - Decimal(1), crossing + Decimal(1)):
         fees = schedule.leg_fees(turnover_inr=turnover, side="buy", on=on)
-        assert fees.brokerage <= Decimal(5)
+        assert fees.brokerage <= Decimal(20)
 
 
 def test_stt_is_sell_side_only(schedule: FeeSchedule) -> None:
-    on = date(2026, 10, 5)
+    on = date(2026, 11, 10)
     buy = schedule.leg_fees(turnover_inr=Decimal(50000), side="buy", on=on)
     sell = schedule.leg_fees(turnover_inr=Decimal(50000), side="sell", on=on)
     assert buy.stt == Decimal(0)
@@ -94,7 +94,7 @@ def test_stt_is_sell_side_only(schedule: FeeSchedule) -> None:
 
 
 def test_stamp_duty_is_buy_side_lower_of_form(schedule: FeeSchedule) -> None:
-    on = date(2026, 10, 5)
+    on = date(2026, 11, 10)
     buy = schedule.leg_fees(turnover_inr=Decimal(123456), side="buy", on=on)
     sell = schedule.leg_fees(turnover_inr=Decimal(123456), side="sell", on=on)
     assert sell.stamp_duty == Decimal(0)
@@ -105,40 +105,45 @@ def test_stamp_duty_is_buy_side_lower_of_form(schedule: FeeSchedule) -> None:
     assert by_percent == by_absolute
 
 
-def test_gst_base_is_brokerage_sebi_and_exchange_only(schedule: FeeSchedule) -> None:
-    on = date(2026, 10, 5)
+def test_gst_base_includes_public_fyers_ipft(schedule: FeeSchedule) -> None:
+    on = date(2026, 11, 10)
     turnover = Decimal(75000)
     fees = schedule.leg_fees(turnover_inr=turnover, side="sell", on=on)
-    base = fees.brokerage + fees.sebi_turnover_fee + fees.exchange_transaction_fee
+    base = (
+        fees.brokerage
+        + fees.sebi_turnover_fee
+        + fees.exchange_transaction_fee
+        + fees.ipft
+    )
     assert fees.gst == base * Decimal(18) / Decimal(100)
     # STT and stamp duty are not in the base: adding them would change the GST.
     with_stt = base + fees.stt
     assert with_stt * Decimal("0.18") != fees.gst
 
 
-def test_ipft_is_absent_unless_the_broker_charges_it(schedule: FeeSchedule) -> None:
-    on = date(2026, 10, 5)
+def test_ipft_is_present_by_default_under_the_fyers_schedule(schedule: FeeSchedule) -> None:
+    on = date(2026, 11, 10)
     off = schedule.leg_fees(turnover_inr=Decimal(1000000), side="buy", on=on)
-    on_f = schedule.leg_fees(turnover_inr=Decimal(1000000), side="buy", on=on, include_ipft=True)
-    assert off.ipft == Decimal(0)
-    assert on_f.ipft == Decimal(1000000) * Decimal("0.01") / CRORE
-    # GST treatment of IPFT is UNVERIFIED_CONTRACT_NOTE_CHECK -> excluded by default.
-    assert on_f.gst == off.gst
-    opted_in = schedule.leg_fees(
-        turnover_inr=Decimal(1000000), side="buy", on=on, include_ipft=True, ipft_in_gst_base=True
+    no_ipft = schedule.leg_fees(
+        turnover_inr=Decimal(1000000), side="buy", on=on, include_ipft=False
     )
-    assert opted_in.gst == (off.gst + on_f.ipft * Decimal("0.18")).quantize(Decimal("1E-12"))
+    expected_ipft = Decimal(1000000) * Decimal("0.01") / CRORE
+    assert off.ipft == expected_ipft
+    assert no_ipft.ipft == Decimal(0)
+    assert off.gst == (no_ipft.gst + expected_ipft * Decimal("0.18")).quantize(
+        Decimal("1E-12")
+    )
 
 
 def test_exchange_rate_is_versioned_by_effective_date(schedule: FeeSchedule) -> None:
     turnover = Decimal(100000)
-    before = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 2, 27))
-    on_boundary = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 3, 1))
-    after = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 10, 5))
-    assert before.exchange_transaction_fee == turnover * Decimal("0.00297") / Decimal(100)
-    assert on_boundary.exchange_transaction_fee == turnover * Decimal("0.00307") / Decimal(100)
-    assert after.exchange_transaction_fee == turnover * Decimal("0.00307") / Decimal(100)
-    assert before.exchange_transaction_fee < after.exchange_transaction_fee
+    before = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 11, 7))
+    on_boundary = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 11, 8))
+    after = schedule.leg_fees(turnover_inr=turnover, side="buy", on=date(2026, 11, 10))
+    expected = turnover * Decimal("0.0030699") / Decimal(100)
+    assert before.exchange_transaction_fee == expected
+    assert on_boundary.exchange_transaction_fee == expected
+    assert after.exchange_transaction_fee == expected
 
 
 @pytest.mark.parametrize(
@@ -200,4 +205,4 @@ def test_slippage_scenario_refuses_unresolved_config() -> None:
 
 def test_negative_turnover_is_rejected(schedule: FeeSchedule) -> None:
     with pytest.raises(CostScheduleError):
-        schedule.leg_fees(turnover_inr=Decimal(-1), side="buy", on=date(2026, 10, 5))
+        schedule.leg_fees(turnover_inr=Decimal(-1), side="buy", on=date(2026, 11, 10))

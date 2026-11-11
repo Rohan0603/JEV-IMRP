@@ -103,4 +103,4 @@ def test_retry_policy_rejects_hidden_statuses_and_negative_retry_after() -> None
         RetryPolicy(status_codes=(500,))
     with pytest.raises(ValueError, match="max_retries"):
         RetryPolicy(max_retries=-1)
-    assert RetryPolicy(max_delay_s=2).delay_for(1, "-10") == 0.0
+    assert RetryPolicy(max_delay_s=2).delay_for(1, "-10") == 0.5

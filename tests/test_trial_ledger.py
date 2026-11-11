@@ -11,6 +11,7 @@ from jev_imrp.common.ledger import (
     LEDGER_PATH,
     REQUIRED_COLUMNS,
     append_trial,
+    audit_ledger,
     ledger_columns,
     load_ledger,
 )
@@ -92,3 +93,49 @@ def test_ledger_without_header_is_an_error(tmp_path) -> None:
     empty.write_text("", encoding="utf-8")
     with pytest.raises(LedgerError, match="no header"):
         ledger_columns(empty)
+
+
+def test_audit_accepts_complete_ledger(tmp_path) -> None:
+    path = tmp_path / "trial_ledger.csv"
+    path.write_text(",".join(REQUIRED_COLUMNS) + "\n", encoding="utf-8")
+    complete = {
+        **ROW,
+        "trial_id": "trial-0001",
+        "code_commit": "0123456789abcdef",
+        "data_manifest": "sha256:manifest-1",
+        "universe_version": "sha256:universe-1",
+        "feature_set_version": "sha256:features-1",
+        "candidate_strategy_version": "sha256:candidates-1",
+        "secondary_metrics_json": '{"hit_rate": 0.5}',
+    }
+    append_trial(complete, path)
+
+    assert audit_ledger(path) == []
+
+
+def test_audit_reports_duplicate_ids_and_unresolved_metadata(tmp_path) -> None:
+    path = tmp_path / "trial_ledger.csv"
+    path.write_text(",".join(REQUIRED_COLUMNS) + "\n", encoding="utf-8")
+    incomplete = {
+        **ROW,
+        "trial_id": "trial-0001",
+        "code_commit": "unknown",
+        "data_manifest": "manifests/TBD",
+        "secondary_metrics_json": "not-json",
+    }
+    append_trial(incomplete, path)
+    append_trial(incomplete, path)
+
+    findings = audit_ledger(path)
+
+    assert any("duplicate trial_id" in finding for finding in findings)
+    assert any("code_commit" in finding and "placeholder" in finding for finding in findings)
+    assert any("data_manifest" in finding and "placeholder" in finding for finding in findings)
+    assert any("secondary_metrics_json" in finding for finding in findings)
+
+
+def test_shipped_ledger_audit_exposes_unresolved_baseline() -> None:
+    findings = audit_ledger()
+
+    assert findings
+    assert any("placeholder" in finding for finding in findings)

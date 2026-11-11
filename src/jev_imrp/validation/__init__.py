@@ -40,6 +40,12 @@ from jev_imrp.validation.temporal_splits import (
     make_session_partitions,
     walk_forward_folds,
 )
+from jev_imrp.validation.tick_policy import (
+    TickEvidence,
+    TickPolicyError,
+    nse_cash_tick_from_price,
+    resolve_effective_tick,
+)
 
 __all__ = [
     "DatasetBoundaries",
@@ -61,12 +67,16 @@ __all__ = [
     "SplitError",
     "SplitLeakError",
     "SplitManifest",
+    "TickEvidence",
+    "TickPolicyError",
     "assert_fit_partition",
     "assert_holdout_not_fitted",
     "audit_split",
     "build_split_manifest",
     "make_session_partitions",
+    "nse_cash_tick_from_price",
     "purge_rows",
     "purge_training_rows",
+    "resolve_effective_tick",
     "walk_forward_folds",
 ]

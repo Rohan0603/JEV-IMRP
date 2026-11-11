@@ -2,7 +2,7 @@
 
 > **Template, version 1.1 — customize the placeholders before use.**
 > Canonical instruction policy for agents in **JEV-IMRP** (`Rohan0603/JEV-IMRP`).
-> GitHub Project: **NOT CONFIGURED — requires authorized GitHub Projects read-back**. Default branch: **main**.
+> GitHub Project: **JEV-IMRP Chief/Worker Governance** — [Project #1](https://github.com/users/Rohan0603/projects/1), verified by authorized GitHub Projects read-back on 2026-11-10. Default branch: **main**.
 > Project owner: **one human developer**; implementation and review may use different AI agents/models.
 > This single root `AGENTS.md` is the complete, canonical agent operating contract. It is not a separate backlog or task source.
 
@@ -12,7 +12,7 @@
 
 Before any work, every agent MUST (whether launched from Codex, OpenCode, ChatGPT Work, a custom orchestrator, or another tool):
 
-1. Read this policy, establish its explicit role (`chief` or `worker`), and query **NOT CONFIGURED — requires authorized GitHub Projects read-back live**, including *all pages*, filtered by its authorized route **except for an explicitly authorized `worker + metadata-bootstrap` pre-Project task (see §4 bootstrap rules and §12)**. Read the target issue body, recent comments, labels, current Project **Status**, dependencies/sub-issues, linked decisions and PRs. Avoid acting on stale cached views.
+1. Read this policy, establish its explicit role (`chief` or `worker`), and query [Project #1](https://github.com/users/Rohan0603/projects/1), including *all pages*, filtered by its authorized route **except for an explicitly authorized `worker + metadata-bootstrap` pre-Project task (see §4 bootstrap rules and §12)**. Read the target issue body, recent comments, labels, current Project **Status**, **Priority**, dependencies/sub-issues, linked decisions and PRs. A missing field value remains **NOT VERIFIED**; never infer it from labels, title text, or migration metadata. Avoid acting on stale cached views.
 2. Confirm the target is a **repository-backed GitHub Issue in the designated Project**, not a Project draft; for `metadata-bootstrap` the Project membership may be **NOT VERIFIED** and the only permitted work is to verify/add it and the other specifically delegated metadata. Convert drafts to issues before starting work. Do not start from an untracked user request: Chief records it as a Project-linked issue first (except emergency containment; see section 10).
 3. Inspect latest default-branch HEAD and relevant project build/test commands and architecture constraints; identify existing tests, open PRs and potential overlapping worktrees.
 4. Validate the role-label invariant and permissions before changing anything. If API access is missing, report **NOT VERIFIED**, not success.

@@ -14,25 +14,65 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
+  tests:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install project and development dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Run deterministic tests
+        run: python -m pytest -q --junitxml="junit/test-results-${{ matrix.python-version }}.xml"
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: junit/test-results-${{ matrix.python-version }}.xml
+
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project and development dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Verify package imports
+        run: python -c "import jev_imrp; from jev_imrp.common import config, ledger, logging, version"
+      - name: Run Ruff
+        run: python -m ruff check .
+      - name: Run mypy
+        run: python -m mypy
+
+  pricing-surface:
+    name: Pricing quality surface
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Python
+      - uses: actions/checkout@v6
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12.10"
           cache: pip
-
       - name: Install project and pinned development tools
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
-
-      - name: Run tests
-        run: python -m pytest -q
-
       - name: Check ORC-268 quality surface when present
         shell: bash
         run: |

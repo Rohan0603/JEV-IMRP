@@ -7,7 +7,7 @@
     "Execution assumptions (explicit, never read from the still-TBD config):",
     "  entry latency            300 ms  (decision -> modelled order arrival)",
     "  maximum quote age        2000 ms",
-    "  session                  2026-10-05 (Monday) IST 09:15-15:30",
+    "  session                  2026-11-10 (Tuesday) IST 09:15-15:30",
     "",
     "Quote stream: 30-second L1 snapshots. Segment 1 bid 99.90 / ask 100.00 until",
     "09:45:00 inclusive; from 09:45:30 onward bid 100.40 / ask 100.50.",
@@ -18,7 +18,7 @@
     "label_interval_* and label_available_at are stored in UTC; decision_time is",
     "echoed as supplied (IST)."
   ],
-  "session_date": "2026-10-05",
+  "session_date": "2026-11-10",
   "latency_ms": 300,
   "max_quote_age_ms": 2000,
   "quote_segments": [
@@ -31,7 +31,7 @@
       "note": "Entry at 100.00, exit at 100.40 after 30 minutes; gross 40.00",
       "position_side": "long",
       "quantity": 100,
-      "decision_time": "2026-10-05T09:30:00+05:30",
+      "decision_time": "2026-11-10T09:30:00+05:30",
       "horizon_minutes": 30,
       "expected": {
         "status": "labelled",
@@ -46,9 +46,9 @@
         "net_return": "0.002934622376",
         "net_bps": "29.34622376",
         "defined_entry_notional_inr": "10000.00",
-        "label_interval_start": "2026-10-05T04:00:00.300000+00:00",
-        "label_interval_end": "2026-10-05T04:30:00.600000+00:00",
-        "label_available_at": "2026-10-05T04:30:00.600000+00:00",
+        "label_interval_start": "2026-11-10T04:00:00.300000+00:00",
+        "label_interval_end": "2026-11-10T04:30:00.600000+00:00",
+        "label_available_at": "2026-11-10T04:30:00.600000+00:00",
         "entry_quote_age_ms": 300,
         "exit_quote_age_ms": 600
       }
@@ -58,7 +58,7 @@
       "note": "Short entry at 99.90 bid, short exit at 100.00 ask 15 minutes later; loss before and after costs",
       "position_side": "short",
       "quantity": 100,
-      "decision_time": "2026-10-05T09:30:00+05:30",
+      "decision_time": "2026-11-10T09:30:00+05:30",
       "horizon_minutes": 15,
       "expected": {
         "status": "labelled",
@@ -71,9 +71,9 @@
         "slippage_and_impact_inr": "0",
         "net_pnl_inr": "-20.62170594",
         "defined_entry_notional_inr": "9990.00",
-        "label_interval_start": "2026-10-05T04:00:00.300000+00:00",
-        "label_interval_end": "2026-10-05T04:15:00.600000+00:00",
-        "label_available_at": "2026-10-05T04:15:00.600000+00:00"
+        "label_interval_start": "2026-11-10T04:00:00.300000+00:00",
+        "label_interval_end": "2026-11-10T04:15:00.600000+00:00",
+        "label_available_at": "2026-11-10T04:15:00.600000+00:00"
       }
     },
     {
@@ -81,7 +81,7 @@
       "note": "EOD labels exit at the closing quote of 15:30:00 IST",
       "position_side": "long",
       "quantity": 100,
-      "decision_time": "2026-10-05T15:00:00+05:30",
+      "decision_time": "2026-11-10T15:00:00+05:30",
       "horizon_minutes": null,
       "expected": {
         "status": "labelled",
@@ -94,9 +94,9 @@
         "slippage_and_impact_inr": "0",
         "net_pnl_inr": "-20.67484654",
         "defined_entry_notional_inr": "10050.00",
-        "label_interval_start": "2026-10-05T09:30:00.300000+00:00",
-        "label_interval_end": "2026-10-05T10:00:00.300000+00:00",
-        "label_available_at": "2026-10-05T10:00:00.300000+00:00"
+        "label_interval_start": "2026-11-10T09:30:00.300000+00:00",
+        "label_interval_end": "2026-11-10T10:00:00.300000+00:00",
+        "label_available_at": "2026-11-10T10:00:00.300000+00:00"
       }
     },
     {
@@ -104,7 +104,7 @@
       "note": "Decision at 15:20:00 plus a 30 minute horizon ends after the 15:30 close: no label, no invented price",
       "position_side": "long",
       "quantity": 100,
-      "decision_time": "2026-10-05T15:20:00+05:30",
+      "decision_time": "2026-11-10T15:20:00+05:30",
       "horizon_minutes": 30,
       "expected": {
         "status": "unlabelled",
@@ -120,7 +120,7 @@
       "note": "The L1 stream stops at 09:59:00, so the 10:00:00.300 exit has only a stale quote: no label",
       "position_side": "long",
       "quantity": 100,
-      "decision_time": "2026-10-05T09:30:00+05:30",
+      "decision_time": "2026-11-10T09:30:00+05:30",
       "horizon_minutes": 30,
       "stream_stop_at": "09:59:00",
       "expected": {

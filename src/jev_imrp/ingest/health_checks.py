@@ -13,10 +13,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
 from jev_imrp.ingest.feed_state import QuoteStateBook, stale_states
-from jev_imrp.ingest.shoonya_recorder import Recorder
+
+
+class RecorderLike(Protocol):
+    """Minimum capture surface required by provider-neutral health checks."""
+
+    book: QuoteStateBook
+    counters: Any
+
 
 #: Wall-clock sanity band. A feed that appears to be from the future or from
 #: before the run started indicates a broken clock, not a broken market.
@@ -77,7 +84,7 @@ def clock_skew_seconds(received_utc: datetime, wall_now_utc: datetime | None = N
 
 
 def evaluate(
-    recorder: Recorder,
+    recorder: RecorderLike,
     as_of_utc: datetime | None = None,
     max_quote_age_ms: float = 5_000.0,
     expected_symbols: int | None = None,

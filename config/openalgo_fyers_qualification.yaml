@@ -1,0 +1,25 @@
+qualification_version: "openalgo_fyers_qualification_v1"
+provider: "openalgo:fyers"
+gateway_protocol: "openalgo-data-api-v1"
+fill_policy:
+  quote_without_bid_ask: "ineligible"
+  depth_level_one_required: true
+  infer_from_ltp_or_ohlc: false
+thresholds:
+  max_source_receive_lag_ms: 2000
+  max_stale_gap_ms: 5000
+  max_crossed_books: 0
+  max_missing_depth_levels: 0
+  max_duplicate_events: 0
+  max_out_of_order_events: 0
+  max_reconnect_gap_ms: 5000
+  max_missing_source_timestamps: 0
+approval_gates:
+  independent_review: "PENDING"
+  security_key_containment: "PENDING"
+  licensing_retention: "PENDING"
+  tick_grid: "PENDING"
+  preregistration: "PENDING"
+live_orders:
+  analyze_mode_default: true
+  separately_authorized: false

@@ -5,10 +5,10 @@ when the normalized state it produces is invalid, parser-errored or unknown.
 Downstream stages decide usability from the derived state, never by dropping
 the raw evidence.
 
-Feed-clock caveat: the Shoonya feed documents ``ft`` only as feed time in Unix
-epoch seconds. Nothing deeper about its clock semantics is verified. This module
-therefore stores the raw string untouched next to a parsed UTC value, and never
-substitutes local receive time for it.
+Feed-clock caveat: provider timestamp semantics are not assumed beyond the
+declared adapter contract. This module therefore stores the raw string
+untouched next to a parsed UTC value, and never substitutes local receive time
+for it.
 """
 
 from __future__ import annotations
@@ -63,16 +63,20 @@ def new_event_id(session_id: str, generation: int, sequence: int) -> str:
     return digest[:32]
 
 
-def parse_feed_timestamp(raw: Any) -> datetime | None:
-    """Parse a feed ``ft`` value into UTC, or return None when unusable.
+def parse_feed_timestamp(raw: Any, *, unit: str = "seconds") -> datetime | None:
+    """Parse a declared epoch unit into UTC, or return None when unusable.
 
-    Only Unix epoch seconds (documented) are accepted. Returns None rather than
-    guessing when the value is absent or non-numeric.
+    The raw value is retained unchanged. Adapters must declare the unit because
+    silently treating milliseconds as seconds would make lag and freshness
+    evidence meaningless.
     """
     if raw is None or raw == "":
         return None
     try:
-        return datetime.fromtimestamp(float(raw), tz=UTC)
+        multiplier = {"seconds": 1.0, "milliseconds": 0.001}.get(unit)
+        if multiplier is None:
+            raise ValueError(f"unsupported feed timestamp unit: {unit}")
+        return datetime.fromtimestamp(float(raw) * multiplier, tz=UTC)
     except (TypeError, ValueError, OSError, OverflowError):
         return None
 

@@ -1,4 +1,4 @@
-"""JEV-IMRP: research platform. Research/replay only; no order placement."""
+"""JEV-IMRP research platform with an explicitly gated OpenAlgo gateway."""
 
 from jev_imrp.common.version import (
     CONFIG_SCHEMA_VERSION,

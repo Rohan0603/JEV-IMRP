@@ -4,17 +4,15 @@ Every charge is calculated in rupees, per executed leg, before any
 normalisation. The rules encoded here are exactly the ones declared in
 ``config/cost_schedule.yaml``:
 
-  brokerage        min(percent * turnover, Rs 5 per executed order)
+  brokerage        min(percent * turnover, Rs 20 per executed order)
   STT              percent of turnover, sell side only (equity intraday)
   exchange txn fee percent of turnover per side, versioned by effective date
   SEBI turnover    Rs 10 per crore of turnover (absolute, not percent)
   stamp duty       BUY side only, min(percent * turnover, Rs 300 per crore)
-  GST              18% of (brokerage + SEBI + exchange transaction fee) only
-  IPFT             Rs 0.01 per crore, only when the schedule enables it; its GST
-                   treatment is UNVERIFIED_CONTRACT_NOTE_CHECK and is therefore
-                   excluded from the GST base unless a caller explicitly opts in.
+  GST              schedule-declared taxable base, including public FYERS IPFT
+  IPFT             Rs 0.01 per crore under the active FYERS draft.
 
-Brokerage is deliberately *not* a constant bps rate: the Rs 5 cap makes the
+Brokerage is deliberately *not* a constant bps rate: the Rs 20 cap makes the
 effective rate notional-dependent, so entry and exit legs are always charged
 separately and never approximated by a round-trip rate.
 
@@ -137,7 +135,9 @@ class FeeSchedule:
     def __init__(self, raw: Mapping[str, Any], *, source: str = "<memory>") -> None:
         self.source = source
         self.version: str = str(raw.get("cost_schedule_version", "unknown"))
-        self._base, self._overrides = self._split_versions(raw.get("versions"))
+        self._base, self._base_start, self._overrides = self._split_versions(
+            raw.get("versions")
+        )
 
     # ------------------------------------------------------------------ load
 
@@ -157,7 +157,9 @@ class FeeSchedule:
 
     def _split_versions(
         self, versions: Any
-    ) -> tuple[Mapping[str, Any], list[tuple[date, date, Mapping[str, Any]]]]:
+    ) -> tuple[
+        Mapping[str, Any], date, list[tuple[date, date, Mapping[str, Any]]]
+    ]:
         """Split the config into the open-ended base entry and closed dated windows.
 
         The base is the entry that is open-ended (``effective_to: null``); it
@@ -170,6 +172,7 @@ class FeeSchedule:
         if not isinstance(versions, list) or not versions:
             raise CostScheduleError("cost schedule 'versions' must be a non-empty list")
         base: dict[str, Any] = {}
+        base_start = date.min
         windows: list[tuple[date, date, Mapping[str, Any]]] = []
         for entry in versions:
             if not isinstance(entry, dict):
@@ -180,6 +183,10 @@ class FeeSchedule:
             start = _as_date(entry.get("effective_from"))
             end = _as_date(entry.get("effective_to"))
             if end is None:
+                if start is not None:
+                    if base and start != base_start:
+                        raise CostScheduleError("multiple open-ended cost versions")
+                    base_start = start
                 for name, spec in components.items():
                     if isinstance(spec, dict):
                         base[name] = spec
@@ -189,10 +196,14 @@ class FeeSchedule:
             raise CostScheduleError(
                 "cost schedule has no open-ended version entry; cannot resolve base rates"
             )
-        return base, sorted(windows, key=lambda v: v[1])
+        return base, base_start, sorted(windows, key=lambda v: v[1])
 
     def components_for(self, on: date) -> Mapping[str, Any]:
         """Merged components effective on ``on``: open-ended base plus dated overrides."""
+        if on < self._base_start:
+            raise CostScheduleError(
+                f"cost schedule {self.version!r} has no effective version for {on}"
+            )
         merged: dict[str, Any] = dict(self._base)
         for start, end, components in self._overrides:
             if start <= on <= end:
@@ -210,7 +221,7 @@ class FeeSchedule:
         side: str,
         on: date,
         include_ipft: bool | None = None,
-        ipft_in_gst_base: bool = False,
+        ipft_in_gst_base: bool | None = None,
     ) -> LegFees:
         """Statutory charges for ONE executed leg of ``turnover_inr`` rupees.
 
@@ -219,8 +230,9 @@ class FeeSchedule:
 
         ``include_ipft`` defaults to the schedule's ``included_by_default``
         flag: IPFT is only charged when the broker actually charges it.
-        ``ipft_in_gst_base`` defaults to False because the schedule marks the
-        IPFT GST treatment ``UNVERIFIED_CONTRACT_NOTE_CHECK``.
+        ``ipft_in_gst_base`` defaults to the schedule's declared GST taxable
+        base. Pass an explicit boolean when a contract-note-qualified override
+        is required.
         """
         if turnover_inr < 0:
             raise CostScheduleError(f"turnover must be non-negative, got {turnover_inr}")
@@ -290,7 +302,13 @@ class FeeSchedule:
                 )
 
         gst_base = brokerage + sebi + exchange
-        if ipft_in_gst_base and ipft != ZERO:
+        schedule_includes_ipft = "ipft_and_other_levies" in (
+            gst_spec.get("taxable_base") or []
+        )
+        if (
+            (schedule_includes_ipft if ipft_in_gst_base is None else ipft_in_gst_base)
+            and ipft != ZERO
+        ):
             gst_base = gst_base + ipft
         gst = gst_base * _dec(gst_spec["rate_pct"]) / Decimal(100)
 

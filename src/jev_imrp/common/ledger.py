@@ -7,6 +7,7 @@ schema is visible to a human reader of the repository.
 from __future__ import annotations
 
 import csv
+import json
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,16 @@ REQUIRED_COLUMNS: tuple[str, ...] = (
     "notes",
 )
 
+AUDIT_PROVENANCE_COLUMNS: tuple[str, ...] = (
+    "code_commit",
+    "data_manifest",
+    "universe_version",
+    "feature_set_version",
+    "candidate_strategy_version",
+)
+VALID_STATUSES = frozenset({"registered", "running", "completed", "failed", "abandoned"})
+PLACEHOLDER_VALUES = frozenset({"", "unknown", "tbd", "not_verified", "unverified"})
+
 
 def ledger_columns(path: Path | None = None) -> list[str]:
     """Column names from the ledger header."""
@@ -78,3 +89,56 @@ def append_trial(row: Mapping[str, Any], path: Path | None = None) -> dict[str, 
     with resolved.open("a", newline="", encoding="utf-8") as handle:
         csv.DictWriter(handle, fieldnames=columns).writerow(written)
     return written
+
+
+def audit_ledger(path: Path | None = None) -> list[str]:
+    """Return reproducible integrity findings for an append-only trial ledger.
+
+    The CSV cannot prove historical file edits without an external snapshot, so
+    append order is treated as authoritative and trial IDs must never repeat.
+    Placeholder provenance values are findings rather than accepted metadata;
+    this keeps an unresolved baseline visible to callers and reviewers.
+    """
+    resolved = path or LEDGER_PATH
+    try:
+        columns = ledger_columns(resolved)
+        rows = load_ledger(resolved)
+    except (LedgerError, OSError) as exc:
+        return [str(exc)]
+
+    findings: list[str] = []
+    if columns != list(REQUIRED_COLUMNS):
+        findings.append(
+            "ledger header does not match the required schema: "
+            f"expected {list(REQUIRED_COLUMNS)!r}, got {columns!r}"
+        )
+
+    seen_trial_ids: set[str] = set()
+    for row_number, row in enumerate(rows, start=2):
+        trial_id = row.get("trial_id", "").strip()
+        if not trial_id:
+            findings.append(f"row {row_number}: missing trial_id")
+        elif trial_id in seen_trial_ids:
+            findings.append(f"row {row_number}: duplicate trial_id {trial_id!r}")
+        else:
+            seen_trial_ids.add(trial_id)
+
+        status = row.get("status", "").strip().lower()
+        if status not in VALID_STATUSES:
+            findings.append(f"row {row_number}: invalid status {status!r}")
+
+        for column in AUDIT_PROVENANCE_COLUMNS:
+            value = row.get(column, "").strip()
+            if value.lower() in PLACEHOLDER_VALUES or "tbd" in value.lower():
+                findings.append(f"row {row_number}: {column} contains a placeholder")
+
+        metrics = row.get("secondary_metrics_json", "").strip()
+        try:
+            parsed_metrics = json.loads(metrics)
+        except json.JSONDecodeError:
+            findings.append(f"row {row_number}: secondary_metrics_json is not valid JSON")
+        else:
+            if not isinstance(parsed_metrics, dict):
+                findings.append(f"row {row_number}: secondary_metrics_json must be a JSON object")
+
+    return findings

@@ -1,10 +1,10 @@
-"""Instrument master: the frozen universe plus broker-specific tokens.
+"""Instrument master: the frozen research universe and optional provider IDs.
 
 ``config/universe.yaml`` freezes membership (plan 2.3). Broker instrument tokens
-are broker identifiers: they must be read from the live instrument master, never
-invented. Until Sprint 1 fills them, this module reports them as unresolved
-rather than substituting a plausible number, and tick-size checks are simply
-unverifiable for those rows.
+are not part of active configuration: provider adapters resolve them from dated
+masters, and this module reports missing provider IDs rather than substituting a
+plausible number. Tick-size checks are unverifiable until provider metadata is
+resolved separately.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class InstrumentMaster:
     frozen_at_utc: str
 
     def tick_sizes(self) -> dict[tuple[str, str], float]:
-        """(exchange, token) -> tick size for the instruments that have a token."""
+        """Return tick sizes only for rows with a resolved provider identifier."""
         known = self.frame.dropna(subset=["instrument_token", "tick_size_inr"])
         return {
             (str(row.exchange), str(row.instrument_token)): float(row.tick_size_inr)

@@ -84,9 +84,10 @@ class HoldoutGuard:
     """Guards a set of locked-holdout sessions.
 
     ``log_path`` receives one JSON object per line for every open attempt,
-    including refused ones. Pass ``allow_reopen=True`` only for a genuinely new
-    pre-registered confirmatory experiment on a NEW holdout, never to make a
-    second look at the same data convenient.
+    including refused ones. A new pre-registered confirmatory experiment must
+    use a new guard and a new holdout; reopening this guard can never make a
+    second look at the same data valid. ``allow_reopen`` remains accepted for
+    configuration compatibility but cannot bypass the single-open protocol.
     """
 
     def __init__(
@@ -164,7 +165,10 @@ class HoldoutGuard:
         if not run_id or not who or not why:
             raise HoldoutError("run_id, who and why are required to open the holdout")
         already_open = any(entry.kind == "open" for entry in self.openings())
-        violation = already_open and not self.allow_reopen
+        # A guard is bound to one frozen holdout. Reopening it is never safe:
+        # a new confirmatory experiment must construct a new guard for a new
+        # holdout rather than reusing this guard or its access log.
+        violation = already_open
         opening = self._record(
             "violation" if violation else "open", run_id=run_id, who=who, why=why
         )

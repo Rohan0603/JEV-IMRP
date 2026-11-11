@@ -17,6 +17,11 @@ from jev_imrp.execution.fills import (
     UnfillableReason,
     simulate_fill,
 )
+from jev_imrp.execution.openalgo_gateway import (
+    OpenAlgoExecutionConfig,
+    OpenAlgoExecutionGateway,
+    OpenAlgoOrderError,
+)
 from jev_imrp.execution.portfolio import TradeResult, realise_trade
 
 __all__ = [
@@ -27,6 +32,9 @@ __all__ = [
     "FillStatus",
     "Leg",
     "LegFees",
+    "OpenAlgoExecutionConfig",
+    "OpenAlgoExecutionGateway",
+    "OpenAlgoOrderError",
     "Quote",
     "Side",
     "SlippageScenario",

@@ -144,7 +144,7 @@ class LabelerConfig:
     policy_version: str = "v1"
     slippage: SlippageScenario | None = None
     include_ipft: bool | None = None
-    ipft_in_gst_base: bool = False
+    ipft_in_gst_base: bool | None = None
     horizons_minutes: tuple[int, ...] = (PRIMARY_HORIZON_MINUTES, *SECONDARY_HORIZON_MINUTES)
     primary_horizon_minutes: int = PRIMARY_HORIZON_MINUTES
     include_eod: bool = True

@@ -187,6 +187,14 @@ def test_second_open_is_a_visible_protocol_violation(tmp_path: Path) -> None:
     assert protection.describe()["n_violations"] == 1
 
 
+def test_allow_reopen_cannot_bypass_single_open_guard(tmp_path: Path) -> None:
+    protection = guard(tmp_path, allow_reopen=True)
+    with protection.open_holdout(run_id="confirm-001", who="tester", why="first run"):
+        pass
+    with pytest.raises(HoldoutProtocolViolation):
+        protection.open_holdout(run_id="confirm-002", who="tester", why="second look")
+
+
 def test_violation_is_logged_even_when_the_second_open_is_refused(tmp_path: Path) -> None:
     log_path = tmp_path / "access.jsonl"
     protection = HoldoutGuard(HOLDOUT_SESSIONS, log_path=log_path)

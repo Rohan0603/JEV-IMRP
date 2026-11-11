@@ -61,6 +61,16 @@ class SyntheticGeneratorConfig:
     max_spread_bps_for_eligible: float = 25.0
     strategy_version: str = SYNTHETIC_STRATEGY_VERSION
 
+    def __post_init__(self) -> None:
+        if self.horizon_minutes <= 0:
+            raise ValueError("horizon_minutes must be positive")
+        if not 0.0 <= self.candidate_probability <= 1.0:
+            raise ValueError("candidate_probability must be between 0 and 1")
+        if self.max_candidates_per_symbol_session < 1:
+            raise ValueError("max_candidates_per_symbol_session must be positive")
+        if self.max_spread_bps_for_eligible < 0.0:
+            raise ValueError("max_spread_bps_for_eligible must not be negative")
+
 
 def feature_hash(features: Mapping[str, float | str | None]) -> str:
     """Stable content hash of a feature snapshot (sha256 over sorted items)."""

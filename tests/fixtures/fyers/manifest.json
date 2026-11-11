@@ -1,0 +1,15 @@
+{
+  "fixture_schema": "jev_fyers_fixture_v1",
+  "provider": "fyers",
+  "source": "synthetic_sanitized_offline_fixture",
+  "credentials": false,
+  "network": false,
+  "order_endpoints": false,
+  "cases": [
+    {"file": "sf_quote.json", "type": "sf", "expected_message_type": "tk"},
+    {"file": "dp_partial.json", "type": "dp", "expected_message_type": "tk"},
+    {"file": "if_index.json", "type": "if", "expected_message_type": "tk"},
+    {"file": "control_connected.json", "type": "cn", "expected_message_type": "cn"},
+    {"file": "control_subscribed.json", "type": "sub", "expected_message_type": "sub"}
+  ]
+}

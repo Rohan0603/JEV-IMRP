@@ -4,6 +4,8 @@ experiment_config_version: "v1"
 mode: research_only
 preregistration_file: PREREGISTRATION.md
 plan_document: JEV_IMRP_Complete_Implementation_Plan_v2.md
+contract_state: draft_unapproved
+amendment_record: docs/PREREGISTRATION_RECONCILIATION_2026-11-07.md
 
 frozen:
   primary_question: >-
@@ -25,7 +27,7 @@ frozen:
   primary_metric: paired_daily_portfolio_net_pnl_difference
   cost_scenarios: [base, stress_1, stress_2]
 
-  delta_min: 0.0001           # fixed: minimum economically meaningful effect (10 bps)
+  delta_min: 0.0001           # draft fractional value (1 bp); signed unit amendment pending
   alpha: 0.05                  # fixed: significance level (5%)
   power_target: 0.8            # fixed: statistical power target (80%)
   test_sidedness: "two_sided"  # fixed: two-sided hypothesis test

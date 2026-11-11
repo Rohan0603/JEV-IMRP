@@ -9,72 +9,52 @@ Research platform for one question (see `PREREGISTRATION.md`):
 
 The authoritative specification is
 [`JEV_IMRP_Complete_Implementation_Plan_v2.md`](JEV_IMRP_Complete_Implementation_Plan_v2.md).
-This repository currently contains the Sprint 0 research contract and
-foundations only: configuration, pre-registration, trial ledger and shared
-utilities. Ingestion, features, labels, models and evaluation arrive in later
-sprints.
+The repository contains the research contract and working offline components
+for ingestion/replay, causal features, labels, execution and cost modelling,
+validation, baselines, JEV attempt handling, configuration and the trial
+ledger. A completed FYERS migration or confirmatory research result is not
+claimed here.
 
 > ## ⚠️ Research only — no live trading
 >
 > This project is research, historical replay and (later) shadow/paper
-> observation only. It contains **no order-placement code, no broker
-> credentials, and no live trading capability**, and none may be added without
-> passing the separate operational and regulatory gate in Sprint 10 of the plan.
+> observation only by default. The OpenAlgo gateway has a separately gated
+> execution surface, defaulting to Analyze/Sandbox; no live order may be sent
+> without the separate operational and regulatory gate in Sprint 10 of the plan.
 > The fee schedule must be re-checked against the broker's contract note before
 > any execution-relevant result; nothing here may be used to justify real money.
 
-> ## 🔌 Shoonya broker contract (Sprint 1)
+> ## 🔌 Provider status and broker boundary
 >
-> The broker is **Shoonya** (Finvasia). All broker interactions go through
-> `tools/shoonya_instrument_fetch.py`, which uses the official
-> [`NorenRestApiPy`](https://github.com/Shoonya-Dev/ShoonyaApi-py) SDK.
+> **OpenAlgo pinned to FYERS is the active provider boundary for research-only
+> market-data capture.** The repository contains offline-tested, data-only
+> gateway and replay boundaries. Credentialed gateway freshness, source-time
+> fidelity, replay lineage and migration acceptance are not yet verified.
 >
-> **OAuth is the only supported login flow** — the old TOTP auto-login
-> (`login(uid, password, twoFA, vendor_code, ...)`) is rejected by the live API
-> with `Invalid Vendor code`. The correct flow is:
->
-> 1. Redirect to `https://api.shoonya.com/OAuthlogin/authorize/oauth?client_id=<CLIENT_ID>`
-> 2. Capture the `code` from the redirect URL
-> 3. Exchange it via `GenAcsTok` with
->    `checksum = SHA256(client_id + secret_code + auth_code)`
-> 4. Use the returned `susertoken` as the `Authorization: Bearer` token
->
-> The script handles steps 1–3 automatically (local redirect server on
-> `localhost:8080`) and step 4 via the SDK's `getAccessToken()`.
->
-> **Endpoint paths matter.** The SDK ships with `NorenWClientTP/` but the live
-> API only accepts `NorenWClientAPI/`. The old path returns 502 Bad Gateway;
-> the documented path returns `400 Invalid Vendor code` for bad credentials
-> and `200 Ok` for good ones. Always verify against
-> [`shoonya.com/api-documentation`](https://shoonya.com/api-documentation)
-> before changing anything broker-related.
->
-> **`searchscrip` is fuzzy.** It matches partial trading symbols, so `"SBIN"`
-> returns `SBINMID150-EQ` (token 761741) before `SBIN-EQ` (token 3045). The
-> script requires an exact `SYMBOL-EQ` match; see the match logic in
-> `tools/shoonya_instrument_fetch.py`.
->
-> **Symbol masters.** Downloadable per exchange at
-> `https://api.shoonya.com/<EX>_symbols.txt.zip` (NSE, BSE, NFO, CDS, MCX,
-> BFO). These bypass login entirely and are useful for cross-checking tokens.
->
-> **Universe note.** The original `TATAMOTORS` entry was replaced with
-> `TVSMOTOR-EQ` (token 8479) because no instrument named `TATAMOTORS` exists on
-> any Shoonya exchange symbol master. All 20 tokens are now resolved.
+> OpenAlgo may connect to multiple brokers, but this project records the
+> upstream provider as `fyers` and must not silently fall back or switch it.
+> Historical datasets retain their original provider labels in immutable
+> manifests; no legacy broker runtime or onboarding path is shipped.
 
 ## Layout
 
 ```text
 config/
   universe.yaml            frozen 20-name NSE cash-equity universe + eligibility rule
-  cost_schedule.yaml       per-leg statutory fees, effective-date versioned (verified 2026-10-17)
+  cost_schedule.yaml       dated FYERS/NSE fee draft (public rates checked 2026-11-07; contract note pending)
   execution_policy.yaml    sizing, overlap, latency, quote age, session, fill policy
   feature_config.yaml      feature definition/version registry (computation lands in Sprint 2)
   experiment.yaml          frozen research-contract pointers and holdout rules
   experiments/
     baseline_v1.yaml       baseline ladder skeleton
     jev_v1.yaml            JEV challenger skeleton (contract NOT_VERIFIED)
-src/jev_imrp/common/       config loading, error types, logging with redaction, tz helpers
+src/jev_imrp/ingest/       provider clients, raw events, replay state and file writing
+src/jev_imrp/features/     causal feature definitions and computation
+src/jev_imrp/labels/       forward-return labels
+src/jev_imrp/execution/    fills, costs and portfolio accounting
+src/jev_imrp/validation/   temporal splits, purge and holdout protection
+src/jev_imrp/models/       rules, linear baseline and JEV client boundaries
+src/jev_imrp/common/       config loading, errors, redacted logging and time helpers
 tests/                     deterministic tests; no network, no credentials
 experiments/
   trial_ledger.csv         append-only trial record (see TRIAL_LEDGER.md)
@@ -87,6 +67,24 @@ reports/                   generated reports
 `data/`, `db/`, `reports/` output and `experiments/runs/` content are ignored by
 git; the DuckDB file must always be rebuildable from versioned inputs and
 manifests (plan 13).
+
+## Current gates
+
+The following are intentionally unresolved and must not be bypassed:
+
+- OpenAlgo credentialed market-hours L1/depth provenance and source-time
+  fidelity, with the upstream provider pinned and recorded as FYERS.
+- A dated, prospective provider-switch amendment before collecting or
+  analysing new OpenAlgo/FYERS results.
+- Licensing/retention approval, exposed-key containment, and reproducible
+  offline quality gates (pytest, Ruff and mypy).
+
+OpenAlgo/FYERS remains unqualified for research conclusions until source-time,
+bid/ask fidelity, upstream provenance and replay lineage are independently
+verified. Analyze-mode execution and synthetic/offline tests are not evidence
+of live-data or live-order acceptance. The recorder-backed qualification
+procedure and precommitted gates are documented in
+[`docs/OPENALGO_FYERS_QUALIFICATION.md`](docs/OPENALGO_FYERS_QUALIFICATION.md).
 
 ## Setup
 
@@ -106,6 +104,10 @@ pytest                 # deterministic; no network, no credentials
 ruff check .           # lint
 mypy                   # strict type check
 ```
+
+The test suite is the currently verified offline gate. Ruff and mypy remain
+separate quality gates until their existing baseline findings are resolved;
+green pytest alone does not establish migration or research acceptance.
 
 Config validation is exercised by the tests and can be run directly:
 

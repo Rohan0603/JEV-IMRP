@@ -37,7 +37,9 @@ from jev_imrp.common.timeutils import ist_session_date
 from jev_imrp.common.version import PARSER_VERSION, RAW_EVENT_SCHEMA_VERSION
 from jev_imrp.ingest.raw_event import RawEvent, empty_table, table_from_events
 
-FEED_TYPE = "shoonya_market_feed"
+# New captures are provider-neutral and retain their exact feed_type value for
+# reproducible replay.
+FEED_TYPE = "market_data"
 #: Suffix of an in-progress file. Anything ending in it is unfinalized.
 TEMP_SUFFIX = ".parquet.tmp"
 MANIFEST_NAME = "manifest.jsonl"
@@ -72,6 +74,11 @@ class ManifestEntry:
     finalized_at_utc: str
     first_sequence: int
     last_sequence: int
+    provider: str = "unknown"
+    provider_version: str = "not_declared"
+    raw_timestamp_semantics: str = "provider_timestamp_or_null"
+    data_origin: str = "unknown"
+    master_hash: str | None = None
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True)
@@ -109,11 +116,19 @@ class RawEventWriter:
         session_id: str,
         settings: WriterSettings | None = None,
         generation: int = 1,
+        provider: str = "unknown",
+        provider_version: str = "not_declared",
+        raw_timestamp_semantics: str = "provider_timestamp_or_null",
+        master_hash: str | None = None,
     ) -> None:
         self.root = Path(root)
         self.session_id = session_id
         self.settings = settings or WriterSettings()
         self.generation = generation
+        self.provider = provider
+        self.provider_version = provider_version
+        self.raw_timestamp_semantics = raw_timestamp_semantics
+        self.master_hash = master_hash
         self.root.mkdir(parents=True, exist_ok=True)
         self.manifest_path = self.root / MANIFEST_NAME
         self._batch = _OpenBatch(started_monotonic=time.monotonic())
@@ -199,6 +214,15 @@ class RawEventWriter:
             finalized_at_utc=datetime.now(UTC).isoformat(),
             first_sequence=events[0].sequence,
             last_sequence=events[-1].sequence,
+            provider=self.provider,
+            provider_version=self.provider_version,
+            raw_timestamp_semantics=self.raw_timestamp_semantics,
+            data_origin=(
+                events[0].data_origin
+                if all(event.data_origin == events[0].data_origin for event in events)
+                else "mixed"
+            ),
+            master_hash=self.master_hash,
         )
         self._append_manifest(entry)
         return entry

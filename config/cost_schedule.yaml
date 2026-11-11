@@ -1,22 +1,35 @@
 # Cost schedule (plan section 8.4): every statutory component calculated PER LEG,
 # in rupees, before any normalisation to bps.
 #
-# VERIFICATION STATUS: the equity cash/intraday rates below were verified on
-# 2026-10-17 against the official Shoonya schedule (shoonya.com/pricing and
-# https://shoonya.com/faq/pricing/what-are-your-brokerage-and-other-charges/).
-# One item is still contested - see ipft_and_other_levies.gst_treatment.
+# VERIFICATION STATUS: the active draft below uses the public FYERS charges
+# list and NSE statutory schedule accessed 2026-11-07. Contract-note parity,
+# account-specific terms, and licensing/retention approval remain pending.
 # Re-verify the whole schedule against the broker's then-current schedule and
 # contract note before any execution-relevant test; the plan requires that check
 # independently of this file.
-cost_schedule_version: "v2"
+cost_schedule_version: "v3-fyers-draft"
+provider: "fyers"
 currency: "INR"
 basis: per_executed_leg
-verified_at: "2026-10-17"
-unverified_notice: "rates verified against shoonya.com/pricing + pricing FAQ on 2026-10-17"
+verified_at: "2026-11-07"
+unverified_notice: "public FYERS/NSE rates checked 2026-11-07; IPFT/GST official-source conflict and contract-note parity unresolved"
+fee_conflicts:
+  status: "UNRESOLVED_OFFICIAL_SOURCE_CONFLICT"
+  block_cost_sensitive_labels: true
+  ipft:
+    charges_list_rate_per_crore_inr: 0.01
+    statutory_support_rate_per_crore_inr: 10.0
+    sources:
+      - "https://fyers.in/charges-list, accessed 2026-11-07"
+      - "https://support.fyers.in/portal/en/kb/articles/what-are-the-statutory-charges-on-trades-at-fyers-stt-gst-sebi-turnover-fee-ipft-etc, accessed 2026-11-07"
+  gst_taxable_base:
+    charges_list_includes: [brokerage, exchange_transaction_fee, sebi_turnover_fee, ipft]
+    statutory_support_includes: [brokerage, exchange_transaction_fee]
+    resolution_required: "redacted contract note or written FYERS clarification"
 
 # Rules that hold regardless of the numbers:
 #   - fees are computed per executed leg (entry and exit separately);
-#   - brokerage is NOT a constant bps rate: the Rs 5 cap makes the effective
+#   - brokerage is NOT a constant bps rate: the Rs 20 cap makes the effective
 #     rate notional-dependent, so both legs must be charged separately;
 #   - stamp duty has a dual (lower-of) form and must be implemented as such;
 #   - SEBI and IPFT are absolute per-cruore charges, not percentages;
@@ -28,7 +41,7 @@ unverified_notice: "rates verified against shoonya.com/pricing + pricing FAQ on 
 # be applied to an NSE instrument.
 
 versions:
-  - effective_from: "2026-03-01"
+  - effective_from: "2026-11-07"
     effective_to: null          # open-ended; supersede with a dated entry when rates change
     components:
 
@@ -36,11 +49,11 @@ versions:
         applies_to: equity_intraday
         type: percent_or_cap_lower_of
         percent: 0.03
-        cap_per_order_inr: 5.00
+        cap_per_order_inr: 20.00
         cap_rule: "min(percent * turnover, cap_per_order_inr)"
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; contract-note parity pending"
 
       stt:
         applies_to: equity_intraday
@@ -48,18 +61,18 @@ versions:
         rate_pct: 0.025
         sides: [sell]           # intraday equity STT applies on the sell side only
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; contract-note parity pending"
 
       exchange_transaction_fee_nse:
         applies_to: equity
         type: percent_of_turnover
-        rate_pct: 0.00307
+        rate_pct: 0.0030699
         sides: [buy, sell]
-        effective_from_note: "effective 2026-03-01; superseded 0.00297% (see earlier version entry)"
+        effective_from_note: "public FYERS/NSE rate checked 2026-11-07"
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list and https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; effective-date and contract-note parity pending"
 
       exchange_transaction_fee_bse:
         applies_to: equity
@@ -69,8 +82,8 @@ versions:
         rate_pct: 0.00183
         sides: [buy, sell]
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; contract-note parity pending"
 
       sebi_turnover_fee:
         applies_to: equity
@@ -79,8 +92,8 @@ versions:
         sides: [buy, sell]
         crore_inr: 10000000
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; effective-date and contract-note parity pending"
 
       stamp_duty:
         applies_to: equity
@@ -90,20 +103,20 @@ versions:
         lower_of_rule: "min(percent * turnover, absolute_per_crore_inr * turnover / crore)"
         sides: [buy]
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list and https://www.nseindia.com/static/invest/first-time-investor-sebi-turnover-fees-stt-other-levies, accessed 2026-11-07"
+        verification: "PUBLIC_RATE_CHECKED; effective-date and contract-note parity pending"
 
       gst:
         applies_to: equity
         type: percent_of_taxable_base
         rate_pct: 18
-        taxable_base: [brokerage, sebi_turnover_fee, exchange_transaction_fee_nse]
+        taxable_base: [brokerage, sebi_turnover_fee, exchange_transaction_fee_nse, ipft_and_other_levies]
         taxable_base_note: >-
-          GST applies to brokerage, SEBI charges and exchange transaction
-          charges only - not to STT, stamp duty or IPFT.
+          FYERS public schedule states GST applies to brokerage, exchange,
+          clearing, SEBI and NSE IPFT charges; clearing is zero for equity here.
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
+        source: "https://fyers.in/charges-list, accessed 2026-11-07"
+        verification: "UNRESOLVED_OFFICIAL_CONFLICT; contract-note parity pending"
 
       ipft_and_other_levies:
         applies_to: equity
@@ -112,32 +125,14 @@ versions:
         basis: traded_value
         crore_inr: 10000000
         sides: [buy, sell]
-        included_by_default: false   # only charged when the broker actually charges it
-        gst_treatment: "per_broker_contract"
+        included_by_default: true
+        gst_treatment: "included_in_public_fyers_gst_base"
         gst_treatment_note: >-
-          IPFT GST treatment must be verified against the broker's current
-          contract note. The pricing page and FAQ may disagree; this must be
-          resolved per contract before performance interpretation.
+          Public FYERS charges list includes NSE IPFT in the GST base; confirm
+          against the account's contract note before performance interpretation.
         per: executed_order
-        source: "shoonya.com/pricing and pricing FAQ, accessed 2026-10-17"
-        verification: "PARTIAL - rate VERIFIED; gst_treatment verified per contract note"
-
-  - effective_from: null          # historical, superseded
-    effective_to: "2026-02-28"
-    components:
-      exchange_transaction_fee_nse:
-        applies_to: equity
-        type: percent_of_turnover
-        rate_pct: 0.00297
-        sides: [buy, sell]
-        per: executed_order
-        source: "shoonya.com/pricing schedule history, accessed 2026-10-17"
-        verification: "VERIFIED (official broker schedule, 2026-10-17)"
-      note: >-
-        Only the exchange transaction charge differed before 2026-03-01. The
-        other components above were already in force; when an execution falls
-        before 2026-03-01, use this version's NSE transaction charge with the
-        current rates for the remaining components.
+        source: "https://fyers.in/charges-list, accessed 2026-11-07"
+        verification: "UNRESOLVED_OFFICIAL_CONFLICT; contract-note parity pending"
 
 out_of_scope_notes:
   derivatives_stt_change_2026-04-01: >-
