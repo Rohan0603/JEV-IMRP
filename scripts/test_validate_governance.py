@@ -1,6 +1,7 @@
 """Offline invariant tests, no network access or GitHub writes."""
 import unittest
-from validate_governance import audit, reconcile_metadata_bootstrap, check_metadata_handback_order
+
+from validate_governance import audit, check_metadata_handback_order, reconcile_metadata_bootstrap
 
 REPO = "owner/project"
 

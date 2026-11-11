@@ -160,11 +160,13 @@ def list_project_items(project_id: str, token: str) -> tuple[str, list[dict]]:
 def audit(repo: str, issues: list[dict], project_items: list[dict]) -> dict:
     errors = []
     pending_bootstrap = []
-    issues_by_id = {i["node_id"]: i for i in issues}
     project_index: dict[str, list[str | None]] = {}
     for item in project_items:
         content = item.get("content")
-        if not content or content.get("repository", {}).get("nameWithOwner", "").lower() != repo.lower():
+        if not content:
+            continue
+        repository = content.get("repository", {}).get("nameWithOwner", "")
+        if repository.lower() != repo.lower():
             continue
         value = item.get("fieldValueByName") or {}
         project_index.setdefault(content["id"], []).append(value.get("name"))
