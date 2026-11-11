@@ -127,18 +127,28 @@ class AttemptStore:
             if os.name == "nt":
                 import msvcrt
 
-                msvcrt.locking(lock_handle.fileno(), msvcrt.LK_LOCK, 1)
+                # Windows-only typing; each platform's branch is checked by mypy on that
+                # platform, so allow the ignore to be unused on the other one.
+                msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
+                    lock_handle.fileno(), msvcrt.LK_LOCK, 1  # type: ignore[attr-defined, unused-ignore]
+                )
             else:
                 import fcntl
 
-                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)  # type: ignore[attr-defined]
+                fcntl.flock(  # type: ignore[attr-defined, unused-ignore]
+                    lock_handle.fileno(), fcntl.LOCK_EX  # type: ignore[attr-defined, unused-ignore]
+                )
             try:
                 yield
             finally:
                 if os.name == "nt":
-                    msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
+                        lock_handle.fileno(), msvcrt.LK_UNLCK, 1  # type: ignore[attr-defined, unused-ignore]
+                    )
                 else:
-                    fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)  # type: ignore[attr-defined]
+                    fcntl.flock(  # type: ignore[attr-defined, unused-ignore]
+                        lock_handle.fileno(), fcntl.LOCK_UN  # type: ignore[attr-defined, unused-ignore]
+                    )
 
 
 def canonical_line(record: dict[str, Any]) -> str:

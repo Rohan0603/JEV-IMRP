@@ -3,10 +3,11 @@
 .env.*
 !.env.example
 
-# captured and derived data (plan 13)
-data/
-db/
-reports/
+# captured and derived data (plan 13) — anchored to the repo root so the
+# tracked source package `src/jev_imrp/data/` is never ignored.
+/data/
+/db/
+/reports/
 
 # experiment outputs: runs/ is generated, the ledger and configs are tracked
 experiments/runs/*

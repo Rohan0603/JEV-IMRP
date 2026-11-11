@@ -74,3 +74,9 @@ def test_private_post_rejects_non_data_endpoint_before_transport() -> None:
     with pytest.raises(OpenAlgoProtocolError, match="read-only data endpoint"):
         client._post("/api/v1/placeorder", {})
     assert transport.calls == []
+
+
+def test_websocket_parser_classifies_typeless_error_frames() -> None:
+    """The live gateway sends errors with no ``type`` field (verified 2026-11-09)."""
+    error = {"status": "error", "code": "INVALID_PARAMETERS", "message": "bad symbol"}
+    assert parse_websocket_message(json.dumps(error)) == ("error", error)

@@ -69,7 +69,9 @@ class DataHealthReport:
         if self.rows_stale:
             problems.append(f"{self.rows_stale} observation(s) exceeded max quote age")
         if self.minutes_since_previous_bar_total:
-            problems.append(f"{self.minutes_since_previous_bar_total} missing minute(s) in observed bars")
+            problems.append(
+                f"{self.minutes_since_previous_bar_total} missing minute(s) in observed bars"
+            )
         return problems
 
 
@@ -112,12 +114,14 @@ def build_health_report(
     frame["feed_timestamp_utc"] = pd.to_datetime(
         frame.get("feed_timestamp_utc"), utc=True, errors="coerce"
     )
-    frame["session"] = frame["received_timestamp_utc"].map(lambda v: ist_session_date(v).isoformat())
+    frame["session"] = frame["received_timestamp_utc"].map(
+        lambda v: ist_session_date(v).isoformat()
+    )
     frame["state_valid"] = frame["state_valid"].fillna(False).astype(bool)
 
     valid = frame[frame["state_valid"]]
     coverage = {
-        f"{symbol}|{session}": int(len(group))
+        f"{symbol}|{session}": len(group)
         for (symbol, session), group in valid.groupby(["symbol", "session"], sort=True)
     }
     invalid_reasons: dict[str, int] = {}
@@ -136,7 +140,9 @@ def build_health_report(
     incomplete = 0
     missing_price = 0
     if bars is not None and len(bars):
-        minutes_since_previous_bar = int((bars["minutes_since_previous_bar"].clip(lower=0) - 1).sum())
+        minutes_since_previous_bar = int(
+            (bars["minutes_since_previous_bar"].clip(lower=0) - 1).sum()
+        )
         incomplete = int((~bars["bar_complete"].astype(bool)).sum())
         missing_price = int(bars["trade_updates"].eq(0).sum())
         if (bars["trade_updates"].eq(0)).any():
@@ -152,8 +158,8 @@ def build_health_report(
         report_version=report_version,
         symbols_covered=sorted(valid["symbol"].dropna().unique().tolist()),
         sessions_covered=sorted(valid["session"].unique().tolist()),
-        rows_total=int(len(frame)),
-        rows_valid=int(len(valid)),
+        rows_total=len(frame),
+        rows_valid=len(valid),
         rows_rejected_invalid=int((~frame["state_valid"]).sum()),
         rows_duplicate_event_id=duplicates,
         rows_missing_feed_timestamp=missing_feed_time,

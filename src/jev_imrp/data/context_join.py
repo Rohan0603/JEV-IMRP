@@ -106,10 +106,7 @@ def load_market_context(rows: list[dict[str, Any]] | pd.DataFrame) -> MarketCont
     cannot be shown to have been knowable at decision time, so accepting it would
     be a silent lookahead.
     """
-    if isinstance(rows, pd.DataFrame):
-        frame = rows.copy()
-    else:
-        frame = pd.DataFrame(list(rows))
+    frame = rows.copy() if isinstance(rows, pd.DataFrame) else pd.DataFrame(list(rows))
     if frame.empty:
         return MarketContext(frame=pd.DataFrame(columns=list(CONTEXT_COLUMNS)))
 
