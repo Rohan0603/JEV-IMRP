@@ -65,3 +65,9 @@ def test_websocket_parser_is_data_only() -> None:
     )[0] == "market_data"
     with pytest.raises(OpenAlgoProtocolError, match="unsupported message type"):
         parse_websocket_message(json.dumps({"type": "order_update"}))
+
+
+def test_websocket_parser_classifies_typeless_error_frames() -> None:
+    """The live gateway sends errors with no ``type`` field (verified 2026-11-09)."""
+    error = {"status": "error", "code": "INVALID_PARAMETERS", "message": "bad symbol"}
+    assert parse_websocket_message(json.dumps(error)) == ("error", error)
