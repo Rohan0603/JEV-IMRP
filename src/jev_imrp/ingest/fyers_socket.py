@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 import uuid
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from importlib import import_module
+from typing import Any, Protocol, cast
 
 from jev_imrp.ingest.feed_state import QuoteState, QuoteStateBook
 from jev_imrp.ingest.raw_event import INGEST_NON_QUOTE, INGEST_OK, RawEvent, parse_feed_timestamp
@@ -34,7 +35,7 @@ def parse_fyers_message(raw: str | bytes) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FyersPacketError("FYERS packet must be a JSON object")
     kind = value.get("type")
-    if kind not in {"cn", "sub", "if", "dp", "sf"}:
+    if kind not in {"cn", "sub", "if", "dp", "sf", "ful"}:
         raise FyersPacketError(f"unsupported FYERS packet type: {kind!r}")
     return value
 
@@ -43,7 +44,7 @@ def normalize_fyers_message(message: Mapping[str, Any]) -> dict[str, Any]:
     """Map one FYERS packet to the canonical raw-event quote keys."""
 
     kind = message.get("type")
-    if kind not in {"cn", "sub", "if", "dp", "sf"}:
+    if kind not in {"cn", "sub", "if", "dp", "sf", "ful"}:
         raise FyersPacketError(f"unsupported FYERS packet type: {kind!r}")
     normalized: dict[str, Any] = {"t": str(kind), "_fyers_payload": dict(message)}
     symbol = message.get("symbol")
@@ -136,6 +137,163 @@ class FyersSocketSession:
 
     def _subscription_frame(self) -> dict[str, object]:
         return {"data_type": "SymbolUpdate", "symbols": list(self._symbols)}
+
+
+class FyersSocketFactory(Protocol):
+    """The small SDK seam used by the offline transport tests."""
+
+    def __call__(self, **kwargs: Any) -> Any: ...
+
+
+class FyersSubscriptionBudget:
+    """Shared Standard-plan symbol budget across all socket instances."""
+
+    def __init__(self, max_symbols: int = 100) -> None:
+        if max_symbols < 1:
+            raise ValueError("subscription budget must be positive")
+        self.max_symbols = max_symbols
+        self._owners: dict[str, set[str]] = {}
+
+    @property
+    def symbols(self) -> frozenset[str]:
+        return frozenset(symbol for symbols in self._owners.values() for symbol in symbols)
+
+    def reserve(self, owner: str, symbols: Sequence[str]) -> None:
+        requested = set(symbols)
+        if any(not isinstance(symbol, str) or not symbol for symbol in requested):
+            raise ValueError("FYERS subscription symbols must be non-empty strings")
+        current = self._owners.get(owner, set())
+        combined = set(self.symbols) - current | requested
+        if len(combined) > self.max_symbols:
+            raise ValueError(f"FYERS subscription exceeds shared {self.max_symbols} symbols")
+        self._owners[owner] = requested
+
+    def release(self, owner: str) -> None:
+        self._owners.pop(owner, None)
+
+
+class FyersDataSocketTransport:
+    """Offline-default, injectable boundary around the FYERS SDK socket.
+
+    Importing this class never imports the optional SDK, reads credentials, or
+    opens a network connection. A caller must explicitly enable live transport
+    and provide a token before ``connect`` can construct the SDK object.
+    """
+
+    def __init__(
+        self,
+        *,
+        access_token: str | None,
+        symbols: Sequence[str],
+        data_types: Sequence[str] = ("SymbolUpdate",),
+        factory: FyersSocketFactory | None = None,
+        budget: FyersSubscriptionBudget | None = None,
+        enable_live: bool = False,
+        reconnect_retry: int = 3,
+        on_message: Callable[[Mapping[str, Any]], None] | None = None,
+        on_error: Callable[[Any], None] | None = None,
+        on_close: Callable[[], None] | None = None,
+    ) -> None:
+        unique_symbols = tuple(dict.fromkeys(symbols))
+        if not unique_symbols or any(
+            not isinstance(symbol, str) or not symbol for symbol in unique_symbols
+        ):
+            raise ValueError("FYERS subscription symbols must be non-empty strings")
+        requested_types = tuple(dict.fromkeys(data_types))
+        if not requested_types or any(
+            kind not in {"SymbolUpdate", "DepthUpdate"} for kind in requested_types
+        ):
+            raise ValueError("FYERS data types must be SymbolUpdate or DepthUpdate")
+        if reconnect_retry < 1:
+            raise ValueError("reconnect_retry must be positive")
+        self.access_token = access_token
+        self.symbols = unique_symbols
+        self.data_types = requested_types
+        self.factory = factory
+        self.budget = budget or _DEFAULT_SUBSCRIPTION_BUDGET
+        self.enable_live = enable_live
+        self.reconnect_retry = reconnect_retry
+        self.on_message = on_message
+        self.on_error = on_error
+        self.on_close = on_close
+        self.owner_id = uuid.uuid4().hex
+        self.session = FyersSocketSession(max_symbols=self.budget.max_symbols)
+        self._sdk: Any | None = None
+        self._closed = False
+        self._connected = False
+
+    @property
+    def connected(self) -> bool:
+        return self._connected
+
+    def connect(self) -> None:
+        if not self.enable_live:
+            raise RuntimeError("live FYERS transport is disabled by default")
+        if not self.access_token:
+            raise RuntimeError("an owner-controlled FYERS access token is required")
+        self.budget.reserve(self.owner_id, self.symbols)
+        factory = self.factory or _load_fyers_socket_factory()
+        try:
+            self._sdk = factory(
+                access_token=self.access_token,
+                log_path="",
+                litemode=False,
+                write_to_file=False,
+                reconnect=True,
+                reconnect_retry=self.reconnect_retry,
+                on_connect=self._handle_connect,
+                on_message=self._handle_message,
+                on_error=self._handle_error,
+                on_close=self._handle_close,
+            )
+            self._sdk.connect()
+        except Exception:
+            self.budget.release(self.owner_id)
+            self._sdk = None
+            raise
+
+    def close(self) -> None:
+        self._closed = True
+        self._connected = False
+        sdk, self._sdk = self._sdk, None
+        self.budget.release(self.owner_id)
+        if sdk is not None and hasattr(sdk, "close"):
+            sdk.close()
+
+    def _handle_connect(self) -> None:
+        if self._closed or self._sdk is None:
+            return
+        self.session.connect()
+        self._connected = True
+        for data_type in self.data_types:
+            self._sdk.subscribe(symbols=list(self.symbols), data_type=data_type)
+
+    def _handle_message(self, message: Any) -> None:
+        if isinstance(message, Mapping) and self.on_message is not None:
+            self.on_message(message)
+
+    def _handle_error(self, error: Any) -> None:
+        if self.on_error is not None:
+            self.on_error(error)
+
+    def _handle_close(self, *args: Any, **kwargs: Any) -> None:
+        self._connected = False
+        self.session.disconnect()
+        if self.on_close is not None:
+            self.on_close()
+
+
+def _load_fyers_socket_factory() -> FyersSocketFactory:
+    try:
+        fyers_module = import_module("fyers_apiv3.fyersModel")
+    except ImportError as exc:
+        raise RuntimeError(
+            "optional fyers-apiv3 dependency is required only for explicitly enabled live transport"
+        ) from exc
+    return cast(FyersSocketFactory, fyers_module.FyersDataSocket)
+
+
+_DEFAULT_SUBSCRIPTION_BUDGET = FyersSubscriptionBudget()
 
 
 class FyersRecorder:
@@ -234,10 +392,13 @@ def _copy_if_present(
 
 
 __all__ = [
+    "FyersDataSocketTransport",
     "FyersPacketError",
     "FyersRecorder",
     "FyersRecorderCounters",
+    "FyersSocketFactory",
     "FyersSocketSession",
+    "FyersSubscriptionBudget",
     "normalize_fyers_message",
     "parse_fyers_message",
 ]

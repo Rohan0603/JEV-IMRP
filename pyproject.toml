@@ -29,6 +29,9 @@ dev = [
     "mypy==2.4.0",
     "types-PyYAML==6.0.12.20250915",
 ]
+fyers = [
+    "fyers-apiv3==3.2.1",
+]
 
 # Dataframe engine rationale (plan 4.2 requires choosing one primary engine):
 # pandas, not Polars. scikit-learn and LightGBM consume numpy/pandas objects

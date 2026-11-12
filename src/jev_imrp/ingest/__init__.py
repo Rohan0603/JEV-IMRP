@@ -28,10 +28,12 @@ from jev_imrp.ingest.fyers_oauth import (
     token_request,
 )
 from jev_imrp.ingest.fyers_socket import (
+    FyersDataSocketTransport,
     FyersPacketError,
     FyersRecorder,
     FyersRecorderCounters,
     FyersSocketSession,
+    FyersSubscriptionBudget,
     normalize_fyers_message,
     parse_fyers_message,
 )
@@ -70,6 +72,7 @@ __all__ = [
     "RAW_EVENT_SCHEMA",
     "DataHealthReport",
     "DataHealthThresholds",
+    "FyersDataSocketTransport",
     "FyersHistoryClient",
     "FyersHistoryError",
     "FyersInstrument",
@@ -78,6 +81,7 @@ __all__ = [
     "FyersRecorder",
     "FyersRecorderCounters",
     "FyersSocketSession",
+    "FyersSubscriptionBudget",
     "FyersSymbolError",
     "HistoryRequest",
     "MarketDataProvider",

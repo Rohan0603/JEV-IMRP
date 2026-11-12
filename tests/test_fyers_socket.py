@@ -7,9 +7,11 @@ import pytest
 
 from jev_imrp.ingest.data_health import evaluate_events
 from jev_imrp.ingest.fyers_socket import (
+    FyersDataSocketTransport,
     FyersPacketError,
     FyersRecorder,
     FyersSocketSession,
+    FyersSubscriptionBudget,
     normalize_fyers_message,
     parse_fyers_message,
 )
@@ -154,3 +156,82 @@ def test_fyers_missing_source_time_and_touchline_fail_data_health_closed() -> No
 def test_fyers_packet_parser_rejects_invalid_messages(raw: str) -> None:
     with pytest.raises(FyersPacketError):
         parse_fyers_message(raw)
+
+
+def test_unknown_ful_control_packet_is_preserved_as_unclassified() -> None:
+    message = parse_fyers_message('{"type":"ful","value":"opaque"}')
+    assert normalize_fyers_message(message) == {
+        "t": "ful",
+        "_fyers_payload": {"type": "ful", "value": "opaque"},
+    }
+
+
+def test_transport_is_offline_default_and_does_not_construct_sdk() -> None:
+    constructed = []
+    transport = FyersDataSocketTransport(
+        access_token="secret",
+        symbols=["NSE:RELIANCE-EQ"],
+        factory=lambda **kwargs: constructed.append(kwargs),
+    )
+
+    with pytest.raises(RuntimeError, match="disabled by default"):
+        transport.connect()
+    assert constructed == []
+
+
+def test_transport_connects_with_explicit_gate_and_replays_both_topics() -> None:
+    class FakeSocket:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.subscriptions = []
+
+        def connect(self):
+            self.kwargs["on_connect"]()
+
+        def subscribe(self, **kwargs):
+            self.subscriptions.append(kwargs)
+
+        def close(self):
+            pass
+
+    sockets = []
+
+    def factory(**kwargs):
+        socket = FakeSocket(**kwargs)
+        sockets.append(socket)
+        return socket
+
+    budget = FyersSubscriptionBudget(max_symbols=2)
+    transport = FyersDataSocketTransport(
+        access_token="appid:token",
+        symbols=["NSE:RELIANCE-EQ", "NSE:TCS-EQ"],
+        data_types=("SymbolUpdate", "DepthUpdate"),
+        factory=factory,
+        budget=budget,
+        enable_live=True,
+    )
+    transport.connect()
+
+    assert sockets[0].kwargs["litemode"] is False
+    assert sockets[0].kwargs["write_to_file"] is False
+    assert sockets[0].subscriptions == [
+        {"symbols": ["NSE:RELIANCE-EQ", "NSE:TCS-EQ"], "data_type": "SymbolUpdate"},
+        {"symbols": ["NSE:RELIANCE-EQ", "NSE:TCS-EQ"], "data_type": "DepthUpdate"},
+    ]
+    transport.close()
+    assert budget.symbols == frozenset()
+
+
+def test_shared_subscription_budget_covers_multiple_sockets() -> None:
+    budget = FyersSubscriptionBudget(max_symbols=2)
+    first = FyersDataSocketTransport(
+        access_token=None, symbols=["NSE:A-EQ"], budget=budget
+    )
+    second = FyersDataSocketTransport(
+        access_token=None, symbols=["NSE:B-EQ", "NSE:C-EQ"], budget=budget
+    )
+
+    budget.reserve(first.owner_id, first.symbols)
+    with pytest.raises(ValueError, match="shared 2 symbols"):
+        budget.reserve(second.owner_id, second.symbols)
+    budget.release(first.owner_id)
