@@ -17,6 +17,10 @@
   JEV returned a completed decision; the decision was `reject` and no order
   action was attempted. The generated artifact is intentionally ignored under
   `data/live/fyers_jev/` because it is runtime data.
+- A first direct-FYERS historical research slice was fetched for all 20 frozen
+  symbols at daily resolution from 2026-10-17 through 2026-11-18. It contains
+  440 validated OHLCV rows. The local ignored manifest records SHA-256
+  `6239d5ead05406392d5872403f40aa64d9cab97bd8616f00a5eb876b7210d150`.
 - Offline quality gates pass at this checkpoint:
   - `uv run pytest -q`: 489 passed
   - `uv run ruff check .`: passed

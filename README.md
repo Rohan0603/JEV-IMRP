@@ -102,6 +102,18 @@ one-time authorization code, atomically replaces `FYERS_ACCESS_TOKEN`, and
 retries the quote once. It never calls an order, position, or account-trading
 endpoint.
 
+The first research history slice can be fetched for the frozen 20-symbol
+universe with the documented, read-only history endpoint:
+
+```powershell
+uv run python scripts/fyers_history_research.py `
+  --from 2026-10-17 --to 2026-11-18 --resolution 1D
+```
+
+The command writes an ignored `data/research/fyers_history/` dataset and a
+SHA-256 manifest. It uses a conservative request delay and fails closed on an
+expired token or any non-research endpoint.
+
 ## Setup
 
 Pinned to Python 3.14 (supports 3.12–3.14):
