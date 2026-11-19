@@ -21,6 +21,11 @@
   symbols at daily resolution from 2026-10-17 through 2026-11-18. It contains
   440 validated OHLCV rows. The local ignored manifest records SHA-256
   `6239d5ead05406392d5872403f40aa64d9cab97bd8616f00a5eb876b7210d150`.
+- A second direct-FYERS slice was fetched at 5-minute resolution over the same
+  period. It contains 31,780 rows, exactly 1,589 per symbol, with zero duplicate
+  symbol/timestamp pairs and zero invalid OHLCV rows. Its local ignored
+  manifest records SHA-256
+  `be4fd45bf161b659ffc5d57f69fe5ab1255d9e932511965ab849e0a9a0a2601e`.
 - Offline quality gates pass at this checkpoint:
   - `uv run pytest -q`: 489 passed
   - `uv run ruff check .`: passed
