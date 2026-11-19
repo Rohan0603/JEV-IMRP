@@ -7,6 +7,7 @@ Example:
 Requires GH_TOKEN/GITHUB_TOKEN or an authenticated `gh auth token` with access to
 repository Issues and the selected GitHub Project. Never modifies GitHub data.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,11 +21,15 @@ import urllib.request
 ALLOWED_STATUSES = {"Backlog", "Ready", "In Progress", "Blocked", "In Review", "Done", "Canceled"}
 
 
-def reconcile_metadata_bootstrap(*, active_claims: int, project_item_count: int,
-                                 pending_writes: list[str] | None = None,
-                                 retry_after_ambiguous_error: bool = False,
-                                 handback_labels_read_back: bool = False,
-                                 handback_comment_read_back: bool = False) -> list[str]:
+def reconcile_metadata_bootstrap(
+    *,
+    active_claims: int,
+    project_item_count: int,
+    pending_writes: list[str] | None = None,
+    retry_after_ambiguous_error: bool = False,
+    handback_labels_read_back: bool = False,
+    handback_comment_read_back: bool = False,
+) -> list[str]:
     """Return advisory findings for a live bootstrap reconciliation checkpoint.
 
     This helper is deliberately offline and does not authorize writes. Live workers
@@ -46,6 +51,8 @@ def reconcile_metadata_bootstrap(*, active_claims: int, project_item_count: int,
     if not (handback_labels_read_back and handback_comment_read_back):
         findings.append("HANDBACK_NOT_VERIFIED")
     return findings
+
+
 def check_metadata_handback_order(events: list[str]) -> list[str]:
     """Advisory offline check of ordered handback evidence, not proof of live writes.
 
@@ -97,8 +104,9 @@ def get_token() -> str:
     if token:
         return token
     try:
-        proc = subprocess.run(["gh", "auth", "token"], check=True, text=True,
-                              capture_output=True, timeout=15)
+        proc = subprocess.run(
+            ["gh", "auth", "token"], check=True, text=True, capture_output=True, timeout=15
+        )
         if proc.stdout.strip():
             return proc.stdout.strip()
     except (OSError, subprocess.SubprocessError):
@@ -108,12 +116,18 @@ def get_token() -> str:
 
 def request(method: str, path: str, token: str, payload: dict | None = None):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    req = urllib.request.Request("https://api.github.com" + path, data=data, method=method,
-                                 headers={"Authorization": "Bearer " + token,
-                                          "Accept": "application/vnd.github+json",
-                                          "Content-Type": "application/json",
-                                          "X-GitHub-Api-Version": "2022-11-28",
-                                          "User-Agent": "solo-multi-agent-audit/1.0"})
+    req = urllib.request.Request(
+        "https://api.github.com" + path,
+        data=data,
+        method=method,
+        headers={
+            "Authorization": "Bearer " + token,
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "solo-multi-agent-audit/1.0",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=45) as resp:
             return json.load(resp)
@@ -139,8 +153,12 @@ def list_project_items(project_id: str, token: str) -> tuple[str, list[dict]]:
     cursor = None
     title = ""
     while True:
-        data = request("POST", "/graphql", token,
-                       {"query": GRAPHQL, "variables": {"id": project_id, "after": cursor}})
+        data = request(
+            "POST",
+            "/graphql",
+            token,
+            {"query": GRAPHQL, "variables": {"id": project_id, "after": cursor}},
+        )
         if data.get("errors"):
             raise RuntimeError("GraphQL: " + json.dumps(data["errors"])[:1200])
         project = data.get("data", {}).get("node")
@@ -172,8 +190,14 @@ def audit(repo: str, issues: list[dict], project_items: list[dict]) -> dict:
         project_index.setdefault(content["id"], []).append(value.get("name"))
 
     def error(issue: dict, kind: str, detail: str):
-        errors.append({"issue_number": issue["number"], "issue_url": issue.get("html_url"),
-                       "code": kind, "detail": detail})
+        errors.append(
+            {
+                "issue_number": issue["number"],
+                "issue_url": issue.get("html_url"),
+                "code": kind,
+                "detail": detail,
+            }
+        )
 
     for issue in issues:
         labels = {x["name"].lower() for x in issue.get("labels", [])}
@@ -184,31 +208,42 @@ def audit(repo: str, issues: list[dict], project_items: list[dict]) -> dict:
             error(issue, "HUMAN_WITHOUT_CHIEF", "human can only coexist with chief")
         bootstrap = "metadata-bootstrap" in labels
         if bootstrap and primary != {"worker"}:
-            error(issue, "BOOTSTRAP_ROUTE",
-                  "metadata-bootstrap requires worker only (no chief/human)")
+            error(
+                issue, "BOOTSTRAP_ROUTE", "metadata-bootstrap requires worker only (no chief/human)"
+            )
         matches = project_index.get(issue["node_id"], [])
         if bootstrap:
             # Unprojected bootstrap is a bounded metadata task, not execution Ready.
             # Report as pending, never silently mark it verified or complete.
-            pending_bootstrap.append({"issue_number": issue["number"],
-                                      "issue_url": issue.get("html_url"),
-                                      "project_items": len(matches),
-                                      "project_status": matches[0] if len(matches) == 1 else None})
+            pending_bootstrap.append(
+                {
+                    "issue_number": issue["number"],
+                    "issue_url": issue.get("html_url"),
+                    "project_items": len(matches),
+                    "project_status": matches[0] if len(matches) == 1 else None,
+                }
+            )
             if issue.get("state") == "closed":
                 error(issue, "BOOTSTRAP_CLOSED", "Bootstrap is unfinished but issue is closed")
             if len(matches) == 0:
                 continue
             if len(matches) != 1:
-                error(issue, "PROJECT_MEMBERSHIP",
-                      f"Bootstrap expected at most one Project item; found {len(matches)}")
+                error(
+                    issue,
+                    "PROJECT_MEMBERSHIP",
+                    f"Bootstrap expected at most one Project item; found {len(matches)}",
+                )
                 continue
         elif len(matches) != 1:
             error(issue, "PROJECT_MEMBERSHIP", f"Expected one Project item; found {len(matches)}")
             continue
         status = matches[0]
         if bootstrap and status not in {"Backlog", "Blocked"}:
-            error(issue, "BOOTSTRAP_STATUS",
-                  f"Metadata-only bootstrap must not be implementation Ready: {status!r}")
+            error(
+                issue,
+                "BOOTSTRAP_STATUS",
+                f"Metadata-only bootstrap must not be implementation Ready: {status!r}",
+            )
         if status not in ALLOWED_STATUSES:
             error(issue, "STATUS", f"Missing or unknown Project Status: {status!r}")
             continue
@@ -224,18 +259,29 @@ def audit(repo: str, issues: list[dict], project_items: list[dict]) -> dict:
         if "human" in labels and status != "Blocked":
             error(issue, "HUMAN_NOT_BLOCKED", "human gate must have Status=Blocked")
 
-    return {"repository": repo, "repo_issues_checked": len(issues),
-            "project_items_for_repo": sum(len(v) for v in project_index.values()),
-            "violation_count": len(errors), "violations": errors,
-            "metadata_bootstrap_pending_count": len(pending_bootstrap),
-            "metadata_bootstrap_pending": pending_bootstrap,
-            "not_checked": ["Metadata bootstrap handoff authorization/claim evidence",
-                            "Definition of Ready content", "Human approval authenticity",
-            "Independent review quality", "Merge SHA/CI evidence",
-            "Cross-issue dependency cycles", "Concurrent lease safety",
-            "Bootstrap handoff authorization", "Competing Worker claims",
-            "Partial-write and retry safety", "Duplicate Project assignment",
-            "Label/comment handback success"]}
+    return {
+        "repository": repo,
+        "repo_issues_checked": len(issues),
+        "project_items_for_repo": sum(len(v) for v in project_index.values()),
+        "violation_count": len(errors),
+        "violations": errors,
+        "metadata_bootstrap_pending_count": len(pending_bootstrap),
+        "metadata_bootstrap_pending": pending_bootstrap,
+        "not_checked": [
+            "Metadata bootstrap handoff authorization/claim evidence",
+            "Definition of Ready content",
+            "Human approval authenticity",
+            "Independent review quality",
+            "Merge SHA/CI evidence",
+            "Cross-issue dependency cycles",
+            "Concurrent lease safety",
+            "Bootstrap handoff authorization",
+            "Competing Worker claims",
+            "Partial-write and retry safety",
+            "Duplicate Project assignment",
+            "Label/comment handback success",
+        ],
+    }
 
 
 def main() -> int:

@@ -174,9 +174,7 @@ class FyersRecorder:
 
     def feed(self, message: str | bytes | Mapping[str, Any]) -> tuple[RawEvent, QuoteState | None]:
         parsed = (
-            parse_fyers_message(message)
-            if isinstance(message, (str, bytes))
-            else dict(message)
+            parse_fyers_message(message) if isinstance(message, (str, bytes)) else dict(message)
         )
         kind = parsed.get("type")
         normalized = normalize_fyers_message(parsed)

@@ -25,9 +25,7 @@ def test_calendar_handles_regular_half_day_and_holiday() -> None:
     calendar = _calendar()
 
     assert calendar.is_trading_day(date(2026, 1, 2))
-    assert calendar.bounds_utc(date(2026, 1, 3))[1] == datetime(
-        2026, 1, 3, 7, 30, tzinfo=UTC
-    )
+    assert calendar.bounds_utc(date(2026, 1, 3))[1] == datetime(2026, 1, 3, 7, 30, tzinfo=UTC)
     assert not calendar.is_trading_day(date(2026, 1, 26))
     assert calendar.contains(datetime(2026, 1, 2, 4, 30, tzinfo=UTC))
     assert not calendar.contains(datetime(2026, 1, 3, 8, 0, tzinfo=UTC))

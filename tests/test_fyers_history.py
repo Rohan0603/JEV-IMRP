@@ -15,9 +15,7 @@ from jev_imrp.ingest.quota import QuotaLimits, QuotaTracker
 
 
 def test_intraday_window_is_chunked_at_100_days_with_deduplicating_boundary() -> None:
-    chunks = chunk_history_window(
-        date(2026, 1, 1), date(2026, 4, 15), resolution="1"
-    )
+    chunks = chunk_history_window(date(2026, 1, 1), date(2026, 4, 15), resolution="1")
 
     assert chunks == [
         (date(2026, 1, 1), date(2026, 4, 10)),

@@ -39,9 +39,10 @@ class InstrumentMaster:
 
     def unresolved_tokens(self) -> list[str]:
         """Symbols still missing a broker token. Blocks live capture, not research."""
-        return [str(symbol) for symbol in self.frame.loc[
-            self.frame["instrument_token"].isna(), "symbol"
-        ].tolist()]
+        return [
+            str(symbol)
+            for symbol in self.frame.loc[self.frame["instrument_token"].isna(), "symbol"].tolist()
+        ]
 
 
 def load_instrument_master(path: str | Path = "config/universe.yaml") -> InstrumentMaster:

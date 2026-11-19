@@ -28,9 +28,7 @@ def config() -> OpenAlgoConfig:
 
 def test_quote_uses_read_only_openalgo_route_and_fyers_pin() -> None:
     transport = FakeTransport({"status": "success", "data": {"ltp": 1422.5}})
-    result = OpenAlgoClient(config(), transport=transport).quote(
-        symbol="RELIANCE", exchange="NSE"
-    )
+    result = OpenAlgoClient(config(), transport=transport).quote(symbol="RELIANCE", exchange="NSE")
 
     assert result == {"ltp": 1422.5}
     assert transport.calls == [
@@ -60,9 +58,12 @@ def test_history_requires_a_list_and_errors_are_redacted() -> None:
 
 
 def test_websocket_parser_is_data_only() -> None:
-    assert parse_websocket_message(
-        json.dumps({"type": "market_data", "exchange": "NSE", "symbol": "RELIANCE"})
-    )[0] == "market_data"
+    assert (
+        parse_websocket_message(
+            json.dumps({"type": "market_data", "exchange": "NSE", "symbol": "RELIANCE"})
+        )[0]
+        == "market_data"
+    )
     with pytest.raises(OpenAlgoProtocolError, match="unsupported message type"):
         parse_websocket_message(json.dumps({"type": "order_update"}))
 

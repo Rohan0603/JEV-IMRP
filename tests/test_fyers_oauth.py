@@ -9,6 +9,7 @@ from jev_imrp.ingest.fyers_oauth import (
     OAuthStateError,
     app_id_hash,
     authorization_url,
+    parse_callback_query,
     token_request,
 )
 
@@ -30,9 +31,7 @@ def test_oauth_state_is_single_use_and_expiry_aware() -> None:
 
 
 def test_authorization_url_preserves_exact_redirect_and_state() -> None:
-    url = authorization_url(
-        "client-1", "http://127.0.0.1:5000/fyers/callback", "state value"
-    )
+    url = authorization_url("client-1", "http://127.0.0.1:5000/fyers/callback", "state value")
 
     assert "client_id=client-1" in url
     assert "redirect_uri=http%3A%2F%2F127.0.0.1%3A5000%2Ffyers%2Fcallback" in url
@@ -48,3 +47,12 @@ def test_token_request_hashes_app_credentials_without_echoing_secret() -> None:
     assert payload["code"] == "auth-code"
     assert payload["appIdHash"] == app_id_hash("client-1", secret)
     assert secret not in str(payload)
+
+
+def test_parse_callback_query_requires_matching_state_and_code() -> None:
+    assert (
+        parse_callback_query({"s": "ok", "auth_code": "code-1", "state": "state-1"}, "state-1")
+        == "code-1"
+    )
+    with pytest.raises(OAuthStateError, match="state"):
+        parse_callback_query({"auth_code": "code-1", "state": "wrong"}, "state-1")

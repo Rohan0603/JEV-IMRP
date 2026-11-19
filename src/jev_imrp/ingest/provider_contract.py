@@ -1,8 +1,8 @@
-"""OpenAlgo-backed FYERS data-only ingestion contract.
+"""Direct FYERS data-only ingestion contract.
 
 The interface intentionally contains no account or transaction operations.
-The active implementation is the OpenAlgo gateway pinned to FYERS; callers
-consume only symbol, quote, depth, and historical market-data responses.
+Callers consume only symbol, quote, depth, and historical market-data
+responses. No account or transaction operation belongs in this contract.
 """
 
 from __future__ import annotations

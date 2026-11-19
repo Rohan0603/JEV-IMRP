@@ -64,6 +64,51 @@ two source-timestamp regressions occurred. This is consistent with an
 OpenAlgo/FYERS gateway/provider freshness issue, not a recorder serialization
 issue: the same run passed manifest verification and replay parity.
 
+The later captured report at
+`data/qualification/openalgo_fyers/20261111T101400Z-03934405/` improved the
+maximum source-to-receipt lag to 16.494 ms, but still failed the unchanged
+precommitted gates: maximum stale gap was 10,460.555 ms and 40 depth frames
+lacked level-one sides. Manifest verification and replay parity passed. This
+remains a provider/gateway freshness and depth-quality failure, not evidence to
+relax thresholds or authorize live use.
+
+On 2026-11-12 during NSE cash-market hours, the newly generated OpenAlgo API
+key authenticated successfully. The standard 300-second capture with the
+library's default keepalive failed after roughly 90 seconds with `1011
+keepalive ping timeout`; no order endpoint was called. A 30-second standard
+capture completed at
+`data/qualification/openalgo_fyers/20261112T041442Z-0fefa469/` and recorded
+1,205 market events, maximum source-to-receipt lag of 1,373.315 ms, maximum
+stale gap of 6,084.501 ms, and no missing depth levels, duplicates,
+out-of-order events, or crossed books. It failed the unchanged stale-gap gate;
+manifest verification and replay parity passed.
+
+As a diagnostic only, a second 300-second capture disabled the client
+keepalive without changing the gateway or order settings:
+`data/qualification/openalgo_fyers/20261112T041811Z-065fb7a9/`.
+It completed 4,636 market events but failed source-to-receipt lag
+(75,949.137 ms), stale gap (16,538.547 ms), and out-of-order events (108).
+Manifest verification and replay parity passed, and the report records
+`analyze_mode=true`, `authorized=false`, `placed=false`. Disabling the client
+heartbeat therefore exposes, rather than resolves, a sustained gateway/data
+quality failure; it is not a reason to relax thresholds or qualify the feed.
+
+## Forward-use decision — 2026-11-12
+
+**Direct FYERS v3 is the sole forward provider path.** OpenAlgo is retired from
+active development and remains only as historical qualification evidence. No
+new OpenAlgo integration, comparator capture, fill-label generation, or order
+route should be built from this point.
+
+The direct FYERS path must preserve raw provider payloads, source/exchange clock
+provenance, local receipt timestamps, symbol-master hashes, reconnect state, and
+fail-closed missingness. It must pass the same unchanged market-hours freshness,
+ordering, depth, manifest, replay, licensing, security, and independent-review
+gates before it can support canonical research labels or any execution claim.
+
+The failed OpenAlgo captures remain immutable historical evidence and must not
+be reclassified as FYERS-direct evidence. Live orders remain unauthorized.
+
 ## Approval and execution boundary
 
 Independent review, security/key-containment, licensing/retention, tick-grid,

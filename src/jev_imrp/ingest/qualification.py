@@ -150,7 +150,8 @@ def evaluate_qualification(
         "reconnect_gaps_ms": reconnect,
         "fill_eligible_events": eligible,
         "quote_events_without_explicit_touchline": sum(
-            1 for event in event_list
+            1
+            for event in event_list
             if event.payload.get("_openalgo_type") == "quote"
             and (event.payload.get("bp1") is None or event.payload.get("sp1") is None)
         ),

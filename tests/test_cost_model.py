@@ -109,12 +109,7 @@ def test_gst_base_includes_public_fyers_ipft(schedule: FeeSchedule) -> None:
     on = date(2026, 11, 10)
     turnover = Decimal(75000)
     fees = schedule.leg_fees(turnover_inr=turnover, side="sell", on=on)
-    base = (
-        fees.brokerage
-        + fees.sebi_turnover_fee
-        + fees.exchange_transaction_fee
-        + fees.ipft
-    )
+    base = fees.brokerage + fees.sebi_turnover_fee + fees.exchange_transaction_fee + fees.ipft
     assert fees.gst == base * Decimal(18) / Decimal(100)
     # STT and stamp duty are not in the base: adding them would change the GST.
     with_stt = base + fees.stt
@@ -130,9 +125,7 @@ def test_ipft_is_present_by_default_under_the_fyers_schedule(schedule: FeeSchedu
     expected_ipft = Decimal(1000000) * Decimal("0.01") / CRORE
     assert off.ipft == expected_ipft
     assert no_ipft.ipft == Decimal(0)
-    assert off.gst == (no_ipft.gst + expected_ipft * Decimal("0.18")).quantize(
-        Decimal("1E-12")
-    )
+    assert off.gst == (no_ipft.gst + expected_ipft * Decimal("0.18")).quantize(Decimal("1E-12"))
 
 
 def test_exchange_rate_is_versioned_by_effective_date(schedule: FeeSchedule) -> None:

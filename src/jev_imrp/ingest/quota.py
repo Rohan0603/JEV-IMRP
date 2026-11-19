@@ -139,8 +139,7 @@ class QuotaTracker:
             raise ValueError("websocket symbols must be a sized collection") from exc
         if count > self.limits.websocket_symbols_total:
             raise ValueError(
-                "websocket subscription exceeds "
-                f"{self.limits.websocket_symbols_total} symbols"
+                f"websocket subscription exceeds {self.limits.websocket_symbols_total} symbols"
             )
 
     def _purge(self, now: datetime) -> None:

@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-AMENDMENT = (
-    Path(__file__).parents[1] / "docs" / "PROVIDER_SWITCH_AMENDMENT_2026-11-07.md"
-)
+AMENDMENT = Path(__file__).parents[1] / "docs" / "PROVIDER_SWITCH_AMENDMENT_2026-11-07.md"
 
 
 def test_provider_switch_amendment_is_explicitly_prospective_and_unapproved() -> None:

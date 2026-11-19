@@ -154,11 +154,22 @@ class OpenAlgoRecorder:
             "_openalgo_payload": payload,
         }
         fields = {
-            "timestamp": "ft", "ltt": "ft", "ltp": "lp", "bid": "bp1",
-            "bid_price": "bp1", "ask": "sp1", "ask_price": "sp1",
-            "bid_qty": "bq1", "bid_size": "bq1", "ask_qty": "sq1", "ask_size": "sq1",
+            "timestamp": "ft",
+            "ltt": "ft",
+            "ltp": "lp",
+            "bid": "bp1",
+            "bid_price": "bp1",
+            "ask": "sp1",
+            "ask_price": "sp1",
+            "bid_qty": "bq1",
+            "bid_size": "bq1",
+            "ask_qty": "sq1",
+            "ask_size": "sq1",
             "open": "o",
-            "high": "h", "low": "l", "close": "c", "volume": "v",
+            "high": "h",
+            "low": "l",
+            "close": "c",
+            "volume": "v",
         }
         normalized.update(
             {target: source[name] for name, target in fields.items() if name in source}

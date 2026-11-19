@@ -6,9 +6,7 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_licensing_policy_is_dated_and_fail_closed() -> None:
-    text = (ROOT / "docs" / "LICENSING_RETENTION_POLICY_2026-11-07.md").read_text(
-        encoding="utf-8"
-    )
+    text = (ROOT / "docs" / "LICENSING_RETENTION_POLICY_2026-11-07.md").read_text(encoding="utf-8")
 
     assert "DRAFT — OWNER/LEGAL APPROVAL REQUIRED" in text
     assert "Unknown permissions fail closed" in text

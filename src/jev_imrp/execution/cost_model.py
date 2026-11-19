@@ -135,9 +135,7 @@ class FeeSchedule:
     def __init__(self, raw: Mapping[str, Any], *, source: str = "<memory>") -> None:
         self.source = source
         self.version: str = str(raw.get("cost_schedule_version", "unknown"))
-        self._base, self._base_start, self._overrides = self._split_versions(
-            raw.get("versions")
-        )
+        self._base, self._base_start, self._overrides = self._split_versions(raw.get("versions"))
 
     # ------------------------------------------------------------------ load
 
@@ -157,9 +155,7 @@ class FeeSchedule:
 
     def _split_versions(
         self, versions: Any
-    ) -> tuple[
-        Mapping[str, Any], date, list[tuple[date, date, Mapping[str, Any]]]
-    ]:
+    ) -> tuple[Mapping[str, Any], date, list[tuple[date, date, Mapping[str, Any]]]]:
         """Split the config into the open-ended base entry and closed dated windows.
 
         The base is the entry that is open-ended (``effective_to: null``); it
@@ -302,13 +298,10 @@ class FeeSchedule:
                 )
 
         gst_base = brokerage + sebi + exchange
-        schedule_includes_ipft = "ipft_and_other_levies" in (
-            gst_spec.get("taxable_base") or []
-        )
+        schedule_includes_ipft = "ipft_and_other_levies" in (gst_spec.get("taxable_base") or [])
         if (
-            (schedule_includes_ipft if ipft_in_gst_base is None else ipft_in_gst_base)
-            and ipft != ZERO
-        ):
+            schedule_includes_ipft if ipft_in_gst_base is None else ipft_in_gst_base
+        ) and ipft != ZERO:
             gst_base = gst_base + ipft
         gst = gst_base * _dec(gst_spec["rate_pct"]) / Decimal(100)
 

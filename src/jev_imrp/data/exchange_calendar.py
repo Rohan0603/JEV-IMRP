@@ -111,14 +111,10 @@ def calendar_from_records(
             start = _local_to_utc(day, open_local, zone)
             end = _local_to_utc(day, close_local, zone)
             if end <= start:
-                raise CalendarError(
-                    f"open_local must precede close_local for {day.isoformat()}"
-                )
+                raise CalendarError(f"open_local must precede close_local for {day.isoformat()}")
             sessions[day] = SessionRecord(day, is_open=True, open_utc=start, close_utc=end)
         else:
-            raise CalendarError(
-                f"unsupported calendar status {status!r} for {day.isoformat()}"
-            )
+            raise CalendarError(f"unsupported calendar status {status!r} for {day.isoformat()}")
 
     return ExchangeCalendar(
         name=name,

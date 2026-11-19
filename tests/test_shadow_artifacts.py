@@ -9,9 +9,7 @@ def test_shadow_artifacts_are_drafts_and_fail_closed() -> None:
     history = (ROOT / "docs" / "HISTORICAL_DATA_QUALIFICATION_2026-11-07.md").read_text(
         encoding="utf-8"
     )
-    protocol = (ROOT / "docs" / "SHADOW_STUDY_PROTOCOL_2026-11-07.md").read_text(
-        encoding="utf-8"
-    )
+    protocol = (ROOT / "docs" / "SHADOW_STUDY_PROTOCOL_2026-11-07.md").read_text(encoding="utf-8")
     runbook = (ROOT / "docs" / "SHADOW_OPERATIONS_RUNBOOK_2026-11-07.md").read_text(
         encoding="utf-8"
     )

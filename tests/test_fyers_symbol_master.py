@@ -76,7 +76,5 @@ def test_mapping_resolves_all_twenty_frozen_symbols_in_order() -> None:
 
     assert len(mapping) == 20
     assert [item.research_symbol for item in mapping] == frozen
-    assert [item.provider_symbol for item in mapping] == [
-        f"NSE:{symbol}-EQ" for symbol in frozen
-    ]
+    assert [item.provider_symbol for item in mapping] == [f"NSE:{symbol}-EQ" for symbol in frozen]
     assert {item.master_sha256 for item in mapping} == {"b" * 64}

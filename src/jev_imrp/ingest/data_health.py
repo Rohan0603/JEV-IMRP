@@ -114,9 +114,7 @@ def evaluate_events(
     session_zone = ZoneInfo(limits.session_timezone)
     sessions = {event.session_id for event in event_list}
     connections = {event.connection_id for event in event_list}
-    generations = {
-        (event.session_id, event.subscription_generation) for event in event_list
-    }
+    generations = {(event.session_id, event.subscription_generation) for event in event_list}
 
     for event in quote_events:
         if event.event_id in seen_ids:
@@ -127,14 +125,10 @@ def evaluate_events(
             symbols.add(symbol)
             symbol_event_counts[symbol] = symbol_event_counts.get(symbol, 0) + 1
             if event.feed_timestamp_utc is not None:
-                received_timestamps.setdefault(symbol, set()).add(
-                    event.feed_timestamp_utc
-                )
+                received_timestamps.setdefault(symbol, set()).add(event.feed_timestamp_utc)
                 session_date = event.feed_timestamp_utc.astimezone(session_zone).date()
                 day_key = f"{symbol}|{session_date.isoformat()}"
-                symbol_day_event_counts[day_key] = (
-                    symbol_day_event_counts.get(day_key, 0) + 1
-                )
+                symbol_day_event_counts[day_key] = symbol_day_event_counts.get(day_key, 0) + 1
         sequence_key = (event.session_id, event.subscription_generation)
         previous_sequence = last_sequence.get(sequence_key)
         if previous_sequence is not None and event.sequence > previous_sequence + 1:
@@ -180,9 +174,7 @@ def evaluate_events(
     missing_symbols = sorted(limits.required_symbols - symbols)
     covered_required = limits.required_symbols.intersection(symbols)
     required_coverage_ratio = (
-        len(covered_required) / len(limits.required_symbols)
-        if limits.required_symbols
-        else 1.0
+        len(covered_required) / len(limits.required_symbols) if limits.required_symbols else 1.0
     )
     interval_coverage: dict[str, float] = {}
     missing_intervals: dict[str, list[str]] = {}
@@ -190,22 +182,16 @@ def evaluate_events(
     received_expected_count = 0
     if expected_intervals is not None:
         for symbol, expected in expected_intervals.items():
-            expected_set = {
-                _aware_utc(timestamp) for timestamp in expected
-            }
+            expected_set = {_aware_utc(timestamp) for timestamp in expected}
             observed = received_timestamps.get(symbol, set())
             matched = expected_set.intersection(observed)
             expected_count += len(expected_set)
             received_expected_count += len(matched)
-            interval_coverage[symbol] = (
-                len(matched) / len(expected_set) if expected_set else 1.0
-            )
+            interval_coverage[symbol] = len(matched) / len(expected_set) if expected_set else 1.0
             missing_intervals[symbol] = sorted(
                 timestamp.isoformat() for timestamp in expected_set - observed
             )
-    overall_interval_coverage = (
-        received_expected_count / expected_count if expected_count else 1.0
-    )
+    overall_interval_coverage = received_expected_count / expected_count if expected_count else 1.0
     metrics: dict[str, Any] = {
         "raw_events": len(event_list),
         "quote_events": quote_count,

@@ -36,8 +36,9 @@ class MarketContext:
     def names(self) -> list[str]:
         return sorted(self.frame["context_name"].dropna().unique().tolist())
 
-    def asof(self, context_name: str, decision_timestamp_utc: Any,
-             max_staleness_seconds: float = 900.0) -> dict[str, Any] | None:
+    def asof(
+        self, context_name: str, decision_timestamp_utc: Any, max_staleness_seconds: float = 900.0
+    ) -> dict[str, Any] | None:
         """Latest observation of ``context_name`` knowable at the decision time.
 
         Returns None when nothing was available. Otherwise the joined row carries
@@ -69,7 +70,8 @@ class MarketContext:
         }
 
     def join(
-        self, decisions: pd.DataFrame,
+        self,
+        decisions: pd.DataFrame,
         decision_timestamp_column: str = "decision_timestamp_utc",
         max_staleness_seconds: float = 900.0,
     ) -> pd.DataFrame:

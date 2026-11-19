@@ -1,4 +1,4 @@
-"""JEV-IMRP research platform with an explicitly gated OpenAlgo gateway."""
+"""JEV-IMRP research platform with a direct FYERS, data-only forward path."""
 
 from jev_imrp.common.version import (
     CONFIG_SCHEMA_VERSION,

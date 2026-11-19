@@ -7,9 +7,9 @@ versioned artifacts. All work is attributed to the human maintainer.
 
 ## Broker boundary
 
-OpenAlgo is the active data-only gateway and must be pinned to the FYERS
-connection for this project. Direct FYERS OAuth is an optional qualification
-path, not a runtime prerequisite.
+Direct FYERS v3 is the sole forward data-only provider path for this project.
+OpenAlgo is retired from active development and remains only as immutable
+historical qualification evidence.
 
 Do not add live order placement, hidden credential flows, silent provider
 fallback, or unrecorded broker switching. Preserve Analyze-mode, finance,

@@ -11,7 +11,7 @@ or live-trading authorization.
 - Canonical Project: [JEV-IMRP Chief/Worker Governance](https://github.com/users/Rohan0603/projects/1), Project #1, node `PVT_kwHOBcLAlM4BndwY`
 - Repository issues checked: 68
 - Repository issues in Project: 68/68
-- Governance validator: `violation_count=0`, `metadata_bootstrap_pending_count=0`
+- Governance validator: `violation_count=0`; metadata-bootstrap handoffs #18 and #38 were completed with live label/read-back evidence and now have `metadata_bootstrap_pending_count=0`
 - Validator evidence limits: metadata-bootstrap handoff authorization, Definition
   of Ready content, human approval authenticity, independent review quality,
   merge SHA/CI evidence, dependency-cycle analysis, concurrent lease safety,
@@ -20,18 +20,22 @@ or live-trading authorization.
   proof scope and are not inferred as complete.
 - Required saved views read back: `All`, `Chief queue`, `Worker ready`,
   `Executing`, `Review`, `Human blocked`, and `Blocked`.
-- Project item counts: 41 Backlog, 16 Blocked, 3 Canceled, 6 In Review, 19 Done (85 total items, including linked pull requests)
-- Open Chief queue read-back: 47 issues; all six open `human`-gated issues
-  (#25, #40, #41, #42, #51, and #64) are `Blocked` in Projects v2, with zero
-  `HUMAN_NOT_BLOCKED` findings. (The parenthetical contains six gates; the
-  queue count is 47.)
+- Project item counts after the 2026-11-11 reconciliation: 15 Backlog, 45 Blocked, 6 Canceled, 20 Done (86 total items, including linked pull requests)
+- Open Chief queue read-back after the two bootstrap handbacks: 47 issues; #18 and #38 are Chief-owned `Backlog` items and the other 45 are `Blocked`. All seven open `human`-gated issues
+  (#25, #40, #41, #42, #51, #52, and #64) are `Blocked` in Projects v2, with zero
+  `HUMAN_NOT_BLOCKED` findings. (The parenthetical contains seven gates; the
+  post-handback Chief queue count is 47.)
 - Project Priority is explicitly set for 21 issues (16 `P0 Critical`, 5 `P1 High`);
   47 issue Priority values and all Risk values remain `NOT VERIFIED`. They are
   intentionally not inferred from title text, labels, or migrated history.
 
 Closed historical issues that were previously outside the Project were added
-and read back as `Done`. Merged PR #85 is `Done`; open PRs #86, #87, and #88 are
-`In Review`.
+and read back as `Done`. Merged PR #85 is `Done`; corrective PR #89 was reviewed
+at exact head `2f59681d64150e8af6189e3b1f4cf347f946f97b`, passed 662 tests plus
+Ruff and mypy, and merged as squash commit
+`bbdd8b9bbc4bc2cf214703c5ed6c990ea553765e`. GitHub has no open PRs; stale
+Project records now read back closed PRs #86–#88 as `Canceled` and merged PR #89
+as `Done`.
 
 ## Current queue reconciliation after the FYERS-only decision
 
@@ -44,13 +48,29 @@ historical key exposure containment and now carries the required `chief` plus
 `human` route.
 
 REST read-back also confirms `chief` plus `human` on the owner-only gates #25,
-#40, #41, #42, #51, and #64. A fresh Projects v2 read-back now succeeds through
-the CLI and the governance validator reports zero violations with no pending
-metadata bootstrap. The authoritative counts are Backlog 41, Blocked 16,
-Canceled 3, In Review 6, and Done 19 (85 total). Issues #17, #19, and #53 are
+#40, #41, #42, #51, #52, and #64, with #52 additionally confirmed by the
+independent review. A fresh Projects v2 read-back now succeeds through the CLI
+and the governance validator reports zero violations and zero pending
+metadata-bootstrap handoffs. The authoritative counts are Backlog 15, Blocked 45,
+Canceled 6, and Done 20 (86 total).
+Issues #17, #19, and #53 are
 in the Project `Canceled` group; human-only gates #25 and #51 are now in
 `Blocked`. Project Priority/Risk values remain subject to the earlier explicit-
-field evidence; no missing value was inferred.
+field evidence; no missing value was inferred. ORC-111/#22 was moved from
+`In Review` to `Blocked` because its former PR #86 is closed and live account-tier,
+market-hours and independent acceptance evidence remain missing. ORC-104/#26 and
+ORC-71/#33 were also reconciled to `Blocked` after targeted
+offline tests and current primary-source research confirmed that their external
+instrument/tick and contract-note/account-plan gates remain unresolved.
+ ORC-84/#69 was moved to `Blocked` after live read-only model discovery returned
+ only moving aliases and no immutable `jev-1.13.0` model.
+ ORC-113/#21, ORC-110/#23, ORC-89/#30, and ORC-73/#31 were reconciled from
+`Backlog` to `Blocked` because their issue-declared prerequisites are unresolved.
+ The remaining downstream analysis/reporting items (#27, #28, #29, #32,
+ #46, #47, #54–#65, #67, #68, and #82) were likewise reconciled to `Blocked`
+ where their issue contracts require upstream gates that are not accepted.
+ Metadata handback read-back confirms #18 and #38 now carry `chief` without
+`metadata-bootstrap`, remain `Backlog`, and are not implementation-ready.
 
 ## Chief-owned work evidence
 
@@ -60,8 +80,12 @@ field evidence; no missing value was inferred.
 | FYERS socket, history, OAuth, symbol mapping | Offline modules, sanitized fixtures, and deterministic tests exist. | PASS offline; live qualification NOT RUN |
 | Quota and data-health controls | Conservative limits, typed failures, health telemetry, and credential-free reports are tested. | PASS offline; account tier NOT VERIFIED |
 | Governance metadata | All repository issues projected; role/status validator has zero violations. | PASS |
-| Quality gate | `uv run pytest -q`, `uv run ruff check src tests`, `uv run mypy src`, compileall, and `git diff --check` pass locally. | PASS local worktree |
-| Exact-head PR review | #86 `f1535e6b4e4fd727fc32a3bddc1bd25c9c6cc44f`, #87 `9d86acd26c4de4e03ce279e8c32713484eb9131b`, #88 `5248a2a1b3d0c748117145d3b695c3ad0279f73b`; checks are green. | #86, #87, and #88 require changes; native approval absent |
+| Quality gate | `uv run pytest -q`, `uv run ruff check .`, `uv run mypy src`, compileall, and `git diff --check` pass locally. `uv run ruff format --check .` reports 30 pre-existing unformatted files across scripts/tests; it was not run in write mode, and tracked-file hashes remain unchanged. | PASS local worktree; format baseline remains open under ORC-267/#38 |
+| TypeSafe model discovery | Credentialed read-only `GET /v1/models` returned HTTP 200 and two aliases, with no immutable `jev-1.13.0`. | Access verified; frozen model qualification blocked |
+| Independent review | Two read-only subagents independently reviewed governance and technical qualification state; findings were integrated, including seven human gates, bootstrap handbacks, stale PR records, and failed OpenAlgo freshness/depth qualification. | Review complete; external gates remain open |
+| OpenAlgo/FYERS qualification | Market-hours captures on 2026-11-12 authenticated with the newly generated key. The standard 30-second run failed stale gap (6,084.501 ms) despite source lag 1,373.315 ms; the standard 300-second run failed at the gateway's keepalive timeout. A diagnostic 300-second run with client heartbeat disabled completed but failed source lag (75,949.137 ms), stale gap (16,538.547 ms), and 108 out-of-order events. Manifest/replay parity passed in completed runs; Analyze-only remained active and no orders were placed. | Provider/data quality NOT QUALIFIED |
+| Provider decision | Direct FYERS v3 is selected as the sole forward provider path. OpenAlgo is retired from active development and retained only as immutable historical qualification evidence. | Decision recorded; direct FYERS transport, credentials, market-hours qualification, and independent gates remain open |
+| Exact-head PR review | #89 `2f59681d64150e8af6189e3b1f4cf347f946f97b`; exact-head local pytest/Ruff/mypy and hosted checks are green; merged as `bbdd8b9bbc4bc2cf214703c5ed6c990ea553765e`. | Corrective code is merged; external qualification and independent acceptance remain open |
 
 ## Requirements not yet achieved
 
@@ -78,9 +102,10 @@ field evidence; no missing value was inferred.
   provider-switch amendment.
 - Independent review, exact-head CI on the final reviewed baseline, merge
   authorization, and any production/data-collection authorization.
-- PR #86 still contains the OpenAlgo adapter surface, PR #87 carries that
-  surface through its stacked base, and PR #88 still adds a lazy Shoonya
-  compatibility surface; all three require FYERS-only revisions before merge.
+- The former PR stack #86–#88 is no longer open. The merged corrective PR #89
+  restores the exchange-calendar source, typeless OpenAlgo error handling and
+  repository quality baseline; it does not satisfy credentialed FYERS, licensing,
+  tick-grid, security, or live market-hours evidence gates.
 
 The repository remains research/data-only. No agent was launched automatically,
 no live order endpoint was used, and no live trading authorization is implied.

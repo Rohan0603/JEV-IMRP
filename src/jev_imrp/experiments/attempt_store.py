@@ -130,24 +130,30 @@ class AttemptStore:
                 # Windows-only typing; each platform's branch is checked by mypy on that
                 # platform, so allow the ignore to be unused on the other one.
                 msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
-                    lock_handle.fileno(), msvcrt.LK_LOCK, 1  # type: ignore[attr-defined, unused-ignore]
+                    lock_handle.fileno(),
+                    msvcrt.LK_LOCK,
+                    1,  # type: ignore[attr-defined, unused-ignore]
                 )
             else:
                 import fcntl
 
                 fcntl.flock(  # type: ignore[attr-defined, unused-ignore]
-                    lock_handle.fileno(), fcntl.LOCK_EX  # type: ignore[attr-defined, unused-ignore]
+                    lock_handle.fileno(),
+                    fcntl.LOCK_EX,  # type: ignore[attr-defined, unused-ignore]
                 )
             try:
                 yield
             finally:
                 if os.name == "nt":
                     msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
-                        lock_handle.fileno(), msvcrt.LK_UNLCK, 1  # type: ignore[attr-defined, unused-ignore]
+                        lock_handle.fileno(),
+                        msvcrt.LK_UNLCK,
+                        1,  # type: ignore[attr-defined, unused-ignore]
                     )
                 else:
                     fcntl.flock(  # type: ignore[attr-defined, unused-ignore]
-                        lock_handle.fileno(), fcntl.LOCK_UN  # type: ignore[attr-defined, unused-ignore]
+                        lock_handle.fileno(),
+                        fcntl.LOCK_UN,  # type: ignore[attr-defined, unused-ignore]
                     )
 
 

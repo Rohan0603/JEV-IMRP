@@ -91,8 +91,10 @@ def build_bars_1m(
         empty.attrs["rows_rejected_invalid"] = rejected
         return empty
     frame["source_utc"] = frame["feed_timestamp_utc"].fillna(frame["received_timestamp_utc"])
-    frame["source_time_basis"] = frame["feed_timestamp_utc"].notna().map(
-        {True: "feed_timestamp_utc", False: "received_timestamp_utc"}
+    frame["source_time_basis"] = (
+        frame["feed_timestamp_utc"]
+        .notna()
+        .map({True: "feed_timestamp_utc", False: "received_timestamp_utc"})
     )
     frame["bar_start_utc"] = frame["source_utc"].dt.floor("min")
     frame["bar_end_utc"] = frame["bar_start_utc"] + pd.Timedelta(minutes=1)

@@ -77,7 +77,9 @@ async def _assert_cancelled_inflight_call_is_durably_recorded(tmp_path: Path) ->
 def test_cancelled_attempt_gets_one_explicit_recovery_with_zero_retry_budget(
     tmp_path: Path,
 ) -> None:
-    asyncio.run(_assert_cancelled_attempt_gets_one_explicit_recovery_with_zero_retry_budget(tmp_path))
+    asyncio.run(
+        _assert_cancelled_attempt_gets_one_explicit_recovery_with_zero_retry_budget(tmp_path)
+    )
 
 
 async def _assert_cancelled_attempt_gets_one_explicit_recovery_with_zero_retry_budget(

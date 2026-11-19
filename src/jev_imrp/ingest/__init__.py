@@ -1,10 +1,9 @@
-"""OpenAlgo-backed FYERS data-only ingestion boundary.
+"""Direct FYERS v3 data-only ingestion boundary.
 
 Research-only. Nothing in this package places an order, reads credentials or
 opens a network connection by itself: the transport is injected by the caller.
-OpenAlgo pinned to FYERS is the only active provider boundary. Direct FYERS
-modules remain available for historical/protocol qualification and provenance,
-but are not the active runtime route.
+Direct FYERS is the only forward provider boundary. OpenAlgo modules remain
+available only for immutable historical qualification and provenance.
 """
 
 from __future__ import annotations
@@ -21,12 +20,18 @@ from jev_imrp.ingest.fyers_history import (
     normalize_candles,
 )
 from jev_imrp.ingest.fyers_oauth import (
+    FyersAuthClient,
+    FyersAuthError,
     FyersOAuthState,
     OAuthStateError,
     app_id_hash,
     authorization_url,
+    httpx_auth_transport,
+    parse_callback_query,
+    replace_env_setting,
     token_request,
 )
+from jev_imrp.ingest.fyers_quotes import FyersQuoteClient, FyersQuoteError, httpx_quote_transport
 from jev_imrp.ingest.fyers_socket import (
     FyersPacketError,
     FyersRecorder,
@@ -70,11 +75,15 @@ __all__ = [
     "RAW_EVENT_SCHEMA",
     "DataHealthReport",
     "DataHealthThresholds",
+    "FyersAuthClient",
+    "FyersAuthError",
     "FyersHistoryClient",
     "FyersHistoryError",
     "FyersInstrument",
     "FyersOAuthState",
     "FyersPacketError",
+    "FyersQuoteClient",
+    "FyersQuoteError",
     "FyersRecorder",
     "FyersRecorderCounters",
     "FyersSocketSession",
@@ -107,12 +116,16 @@ __all__ = [
     "evaluate_events",
     "evaluate_qualification",
     "fill_eligible",
+    "httpx_auth_transport",
+    "httpx_quote_transport",
     "new_event_id",
     "normalize_candles",
     "normalize_fyers_message",
+    "parse_callback_query",
     "parse_fyers_message",
     "parse_websocket_message",
     "read_manifest",
+    "replace_env_setting",
     "to_fyers_symbol",
     "token_request",
     "verify_manifest",

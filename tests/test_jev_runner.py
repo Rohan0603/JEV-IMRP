@@ -59,9 +59,7 @@ def runner(tmp_path: Path, client: MockJevClient, **kwargs: object) -> JevRunner
 
 
 def test_retryable_statuses_retry_with_bounded_attempt_persistence(tmp_path: Path) -> None:
-    client = MockJevClient(
-        MockConfig(steps={"c": ("429", "529", "ok")})
-    )
+    client = MockJevClient(MockConfig(steps={"c": ("429", "529", "ok")}))
     result = asyncio.run(runner(tmp_path, client).run((candidate("c"),)))
 
     attempts = AttemptStore(tmp_path / "attempts.jsonl").attempts()
@@ -74,9 +72,7 @@ def test_retryable_statuses_retry_with_bounded_attempt_persistence(tmp_path: Pat
 
 
 @pytest.mark.parametrize("step", ["500", "404", "timeout"])
-def test_non_retryable_and_timeout_failures_are_recorded_once(
-    tmp_path: Path, step: str
-) -> None:
+def test_non_retryable_and_timeout_failures_are_recorded_once(tmp_path: Path, step: str) -> None:
     client = MockJevClient(MockConfig(steps={"c": (step,)}))
     result = asyncio.run(runner(tmp_path, client).run((candidate("c"),)))
 

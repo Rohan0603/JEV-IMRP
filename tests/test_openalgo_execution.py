@@ -11,9 +11,7 @@ from jev_imrp.execution.openalgo_gateway import (
 def test_live_execution_requires_explicit_opt_in() -> None:
     with pytest.raises(ValueError, match="allow_live_orders"):
         OpenAlgoExecutionGateway(
-            OpenAlgoExecutionConfig(
-                host="http://openalgo", api_key="secret", analyze_mode=False
-            )
+            OpenAlgoExecutionConfig(host="http://openalgo", api_key="secret", analyze_mode=False)
         )
 
 

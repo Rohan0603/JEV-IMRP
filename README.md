@@ -9,30 +9,31 @@ Research platform for one question (see `PREREGISTRATION.md`):
 
 The authoritative specification is
 [`JEV_IMRP_Complete_Implementation_Plan_v2.md`](JEV_IMRP_Complete_Implementation_Plan_v2.md).
-The repository contains the research contract and working offline components
-for ingestion/replay, causal features, labels, execution and cost modelling,
+The repository contains the research contract and working components for
+ingestion/replay, causal features, labels, execution and cost modelling,
 validation, baselines, JEV attempt handling, configuration and the trial
-ledger. A completed FYERS migration or confirmatory research result is not
-claimed here.
+ledger. The direct FYERS read-only handoff to JEV is implemented; no
+confirmatory research result is claimed here.
 
 > ## ⚠️ Research only — no live trading
 >
 > This project is research, historical replay and (later) shadow/paper
-> observation only by default. The OpenAlgo gateway has a separately gated
-> execution surface, defaulting to Analyze/Sandbox; no live order may be sent
-> without the separate operational and regulatory gate in Sprint 10 of the plan.
+> observation only by default. Any execution surface remains separately gated
+> and defaults to no live orders; no live order may be sent without the
+> separate operational and regulatory gate in Sprint 10 of the plan.
 > The fee schedule must be re-checked against the broker's contract note before
 > any execution-relevant result; nothing here may be used to justify real money.
 
 > ## 🔌 Provider status and broker boundary
 >
-> **OpenAlgo pinned to FYERS is the active provider boundary for research-only
-> market-data capture.** The repository contains offline-tested, data-only
-> gateway and replay boundaries. Credentialed gateway freshness, source-time
-> fidelity, replay lineage and migration acceptance are not yet verified.
+> **Direct FYERS v3 is the sole forward provider boundary for research-only
+> market-data capture.** OpenAlgo is retired from active development and is
+> retained only as immutable historical qualification evidence. Direct FYERS
+> credentials, source-time fidelity, replay lineage and live qualification
+> remain separate gates.
 >
-> OpenAlgo may connect to multiple brokers, but this project records the
-> upstream provider as `fyers` and must not silently fall back or switch it.
+> The runtime must record the provider as `fyers` and must not silently fall
+> back or switch brokers.
 > Historical datasets retain their original provider labels in immutable
 > manifests; no legacy broker runtime or onboarding path is shipped.
 
@@ -72,19 +73,34 @@ manifests (plan 13).
 
 The following are intentionally unresolved and must not be bypassed:
 
-- OpenAlgo credentialed market-hours L1/depth provenance and source-time
-  fidelity, with the upstream provider pinned and recorded as FYERS.
-- A dated, prospective provider-switch amendment before collecting or
-  analysing new OpenAlgo/FYERS results.
-- Licensing/retention approval, exposed-key containment, and reproducible
-  offline quality gates (pytest, Ruff and mypy).
+- Credentialed market-hours FYERS L1/depth provenance, source-time fidelity,
+  reconnect behavior and replay lineage for the socket recorder.
+- Licensing/retention approval, exposed-key containment, broker account-tier
+  evidence and independent review of live qualification artifacts.
+- The research data, label, cost, baseline and JEV evaluation gates in the
+  implementation plan; the live smoke is integration evidence, not research
+  acceptance.
 
-OpenAlgo/FYERS remains unqualified for research conclusions until source-time,
-bid/ask fidelity, upstream provenance and replay lineage are independently
-verified. Analyze-mode execution and synthetic/offline tests are not evidence
-of live-data or live-order acceptance. The recorder-backed qualification
-procedure and precommitted gates are documented in
+Direct FYERS remains unqualified for research conclusions until source-time,
+bid/ask fidelity, reconnect behavior, upstream provenance and replay lineage
+are independently verified. The historical OpenAlgo qualification procedure
+is retained as immutable evidence in
 [`docs/OPENALGO_FYERS_QUALIFICATION.md`](docs/OPENALGO_FYERS_QUALIFICATION.md).
+The current project-wide checkpoint is recorded in
+[`docs/PROJECT_COMPLETION_AUDIT_2026-11-19.md`](docs/PROJECT_COMPLETION_AUDIT_2026-11-19.md).
+
+The direct read-only smoke path is opt-in:
+
+```powershell
+uv run python scripts/fyers_live_jev.py --symbol RELIANCE
+```
+
+It loads the ignored `.env` file, requests the latest FYERS quote, and sends
+one sanitized state to JEV. If FYERS returns `401`, it opens the configured
+loopback OAuth callback, waits for the user-mediated login, exchanges the
+one-time authorization code, atomically replaces `FYERS_ACCESS_TOKEN`, and
+retries the quote once. It never calls an order, position, or account-trading
+endpoint.
 
 ## Setup
 
@@ -105,9 +121,9 @@ ruff check .           # lint
 mypy                   # strict type check
 ```
 
-The test suite is the currently verified offline gate. Ruff and mypy remain
-separate quality gates until their existing baseline findings are resolved;
-green pytest alone does not establish migration or research acceptance.
+The test suite, Ruff, mypy, formatting, compilation and diff checks are the
+currently verified offline quality gates. Green offline checks do not establish
+live-data qualification, licensing, independent review or research acceptance.
 
 Config validation is exercised by the tests and can be run directly:
 

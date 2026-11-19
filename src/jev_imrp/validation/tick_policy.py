@@ -40,9 +40,7 @@ def nse_cash_tick_from_price(price: Decimal) -> Decimal:
     return Decimal("5.00")
 
 
-def resolve_effective_tick(
-    records: list[TickEvidence], symbol: str, as_of: date
-) -> Decimal:
+def resolve_effective_tick(records: list[TickEvidence], symbol: str, as_of: date) -> Decimal:
     """Resolve one verified EQ tick record, failing closed on ambiguity."""
 
     candidates = [
