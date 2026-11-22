@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-from jev_imrp.common.timeutils import is_within_session, minutes_since_open, utc_now
+from jev_imrp.common.timeutils import is_within_session, minutes_since_open, to_ist, utc_now
 from jev_imrp.experiments.attempt_store import AttemptStore
 from jev_imrp.experiments.runner import JevRunner
 from jev_imrp.ingest.fyers_oauth import (
@@ -156,7 +156,7 @@ def _interactive_reauthenticate() -> str:
 
 async def run(symbol: str) -> dict[str, Any]:
     now = utc_now()
-    if not is_within_session(now):
+    if to_ist(now).weekday() >= 5 or not is_within_session(now):
         raise RuntimeError(
             f"direct FYERS smoke requires NSE cash-market hours; current UTC is {now}"
         )
