@@ -11,6 +11,7 @@ from __future__ import annotations
 from jev_imrp.ingest.data_health import DataHealthReport, DataHealthThresholds, evaluate_events
 from jev_imrp.ingest.feed_state import QuoteState, QuoteStateBook
 from jev_imrp.ingest.file_writer import RawEventWriter, read_manifest, verify_manifest
+from jev_imrp.ingest.fyers_auth_flow import interactive_reauthenticate
 from jev_imrp.ingest.fyers_history import (
     FyersHistoryClient,
     FyersHistoryError,
@@ -120,6 +121,7 @@ __all__ = [
     "fill_eligible",
     "httpx_auth_transport",
     "httpx_quote_transport",
+    "interactive_reauthenticate",
     "new_event_id",
     "normalize_candles",
     "normalize_fyers_message",

@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 import yaml
 
+from jev_imrp.ingest.fyers_auth_flow import interactive_reauthenticate
 from jev_imrp.ingest.fyers_history import FyersHistoryClient
 from jev_imrp.ingest.fyers_symbol_master import to_fyers_symbol
 
@@ -56,13 +57,18 @@ def fetch_transport(path: str, payload: dict[str, object]) -> dict[str, object]:
     token = os.environ.get("FYERS_ACCESS_TOKEN", "").strip()
     if not app_id or not token:
         raise RuntimeError("FYERS_APP_ID and FYERS_ACCESS_TOKEN are required")
-    response = httpx.get(
-        HISTORY_ENDPOINT,
-        headers={"Authorization": f"{app_id}:{token}"},
-        params=payload,
-        timeout=30.0,
-    )
-    if response.status_code == 401:
+    for attempt in range(2):
+        response = httpx.get(
+            HISTORY_ENDPOINT,
+            headers={"Authorization": f"{app_id}:{os.environ['FYERS_ACCESS_TOKEN']}"},
+            params=payload,
+            timeout=30.0,
+        )
+        if response.status_code != 401:
+            break
+        if attempt == 0 and os.environ.get("FYERS_REAUTH_ON_EXPIRED") == "1":
+            interactive_reauthenticate()
+            continue
         raise RuntimeError("FYERS history rejected the access token; refresh it and retry")
     if response.status_code == 429:
         return {"s": "retry", "code": 429, "message": "FYERS rate limit"}
@@ -123,11 +129,18 @@ def main() -> int:
     parser.add_argument("--resolution", default="1D")
     parser.add_argument("--output", default="data/research/fyers_history")
     parser.add_argument("--delay-seconds", type=float, default=1.0)
+    parser.add_argument(
+        "--reauth",
+        action="store_true",
+        help="open the user-mediated loopback OAuth flow once if the token is expired",
+    )
     args = parser.parse_args()
     if args.end < args.start:
         parser.error("--to must not precede --from")
     if args.delay_seconds < 0:
         parser.error("--delay-seconds must not be negative")
+    if args.reauth:
+        os.environ["FYERS_REAUTH_ON_EXPIRED"] = "1"
     try:
         manifest = run(
             start=args.start,
