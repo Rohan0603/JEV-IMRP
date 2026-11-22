@@ -19,10 +19,13 @@ from typing import Any
 import yaml
 
 from jev_imrp.common.timeutils import is_within_session, to_ist, utc_now
-from jev_imrp.ingest.file_writer import RawEventWriter
+from jev_imrp.ingest.data_health import DataHealthThresholds, evaluate_events
+from jev_imrp.ingest.file_writer import RawEventWriter, iter_raw_events, verify_manifest
 from jev_imrp.ingest.fyers_market_data import FyersMarketDataBridge
 from jev_imrp.ingest.fyers_socket import FyersRecorder
 from jev_imrp.ingest.fyers_symbol_master import to_fyers_symbol
+from jev_imrp.ingest.qualification import evaluate_qualification
+from jev_imrp.ingest.raw_event import RawEvent
 
 SDK_VERSION = "3.3.0"
 
@@ -126,6 +129,14 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
         timer.cancel()
         connection.close_connection()
         writer.finalize()
+    capture_end = datetime.now(UTC)
+    events = [RawEvent.from_row(row) for row in iter_raw_events(output)]
+    qualification = evaluate_qualification(events, capture_end_utc=capture_end)
+    health = evaluate_events(
+        events,
+        thresholds=DataHealthThresholds(required_symbols=frozenset(symbols)),
+    )
+    manifest_problems = verify_manifest(output)
     report = {
         "provider": "fyers-direct",
         "provider_version": f"fyers-apiv3-{SDK_VERSION}",
@@ -141,6 +152,10 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
             "validated_quote_rows": bridge.quote_rows,
         },
         "socket_errors": errors,
+        "qualification": qualification.to_dict(),
+        "data_health": health.to_dict(),
+        "manifest_problems": manifest_problems,
+        "ok": qualification.ok and health.ok and not manifest_problems,
         "live_orders": {
             "authorized": False,
             "placed": False,
