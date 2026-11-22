@@ -3,8 +3,9 @@
 Rungs 1-4 of the model ladder, all implementing the same
 :class:`~jev_imrp.models.policy.Policy` interface: rung 1 unfiltered, rung 2
 matched random with repeated draws, rung 3 cost-aware deterministic, rung 4 fixed
-mechanical rules. Later rungs (linear baseline, LightGBM, JEV) are added by the
-model workers and must use this same interface and the same fairness conventions.
+mechanical rules. Linear baseline and JEV client boundaries are also available;
+LightGBM remains a research-stage comparator pending a valid labeled dataset.
+All rungs must use this same interface and the same fairness conventions.
 """
 
 from __future__ import annotations

@@ -1,8 +1,13 @@
 # JEV-IMRP provider-boundary amendment — OpenAlgo-backed FYERS
 
+> Historical draft only. This amendment records the superseded OpenAlgo-backed
+> proposal and is not the current provider contract. Direct FYERS v3 is now the
+> sole forward data-only provider path; OpenAlgo is retained as historical
+> evidence only.
+
 **Amendment ID:** `JEV-IMRP-PROVIDER-SWITCH-2026-11-11-v2`  
 **Status:** `DRAFT — OWNER/INDEPENDENT REVIEW REQUIRED`  
-**Research boundary:** OpenAlgo is the gateway for both data and execution.
+**Research boundary at the time:** OpenAlgo was the gateway for both data and execution.
 Analyze/Sandbox is the default; live order execution remains separately gated.
 
 ## Decision

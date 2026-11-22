@@ -1,5 +1,5 @@
 # Feature definition/version registry (plan section 7.2). Definitions only; the
-# computation library lands in Sprint 2 (src/features/).
+# computation library is implemented in src/jev_imrp/features/.
 feature_config_version: "v1"
 feature_set_version: "fs_v1"
 definition_reference: "JEV_IMRP_Complete_Implementation_Plan_v2.md section 7.2"

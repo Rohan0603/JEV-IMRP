@@ -1,5 +1,6 @@
 # JEV challenger experiment configuration (plan sections 9.3 / 9.4).
-# No replay has been run and no API call has been made from this repository yet.
+# No confirmatory replay has been run from this configuration. The separate
+# read-only live smoke is integration evidence, not a research replay.
 experiment_id: jev_v1
 experiment_type: confirmatory_challenger
 experiment_config_version: "v2"

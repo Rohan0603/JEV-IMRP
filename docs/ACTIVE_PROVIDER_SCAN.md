@@ -1,15 +1,19 @@
-# Active provider scan — 2026-11-11
+# Historical provider scan — 2026-11-11
+
+> Historical evidence only. This document predates the direct-FYERS decision
+> and is not the current provider contract. OpenAlgo is not the active runtime
+> route.
 
 This report records the OpenAlgo-backed FYERS active-provider boundary. It is a
 static evidence artifact; it does not establish live-provider parity or
 credentialed acceptance.
 
-## Active runtime result
+## Historical runtime result
 
-The active ingestion package exposes the OpenAlgo read-only gateway pinned to
-FYERS. Direct FYERS v3 modules remain for protocol/history qualification and
-immutable provenance, but are not the active runtime route. No retired broker
-module or silent provider fallback is part of the active package boundary.
+At the time of this scan, the ingestion package exposed the OpenAlgo
+read-only gateway pinned to FYERS. The current package instead uses direct
+FYERS v3 for forward read-only market-data work; the old OpenAlgo route is
+retained only for immutable historical provenance.
 The regression guard is `tests/test_provider_boundary.py`.
 
 New captures use the provider-neutral `feed_type=market_data` partition.
