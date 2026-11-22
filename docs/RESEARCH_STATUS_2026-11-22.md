@@ -17,6 +17,7 @@ result.
 | Provenance | Ignored manifests record endpoint, range, symbol list, retrieval time and SHA-256 | Verified |
 | Order safety | Research mode and direct scripts expose no order/position/modify/cancel call | Verified |
 | Socket capture tooling | Read-only `SymbolUpdate` + `DepthUpdate` recorder command implemented; market-hours run still required | Tooling ready |
+| Session guard | 2026-11-22 08:29:50 UTC invocation refused before connecting outside NSE cash-market hours | Verified fail-closed |
 | Direct FYERS → JEV bridge | Validated `QuoteState` rows publish into the shared causal `FeatureEngine`; offline regression test passes | Verified offline |
 
 Runtime datasets are under ignored `data/research/`; they are not silently
