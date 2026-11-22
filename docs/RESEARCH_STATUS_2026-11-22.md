@@ -43,6 +43,11 @@ dataset when using it outside this workspace.
    failed closed and wrote no partial artifact; refresh is user-mediated and
    must not be bypassed. The research history command now supports an explicit
    `--reauth` opt-in for that loopback flow.
+7. After the explicit refresh, the one-minute request identified one malformed
+   FYERS ADANIENT candle in the requested range (`open=2730.0` while
+   `low=2736.6`). The normalizer rejected the complete symbol slice; the value
+   was not repaired or silently removed. This is provider-data quality evidence,
+   not a research result.
 
 ## Safe next sequence
 

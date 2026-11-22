@@ -88,15 +88,18 @@ def run(
     for index, symbol in enumerate(symbols):
         if index:
             time.sleep(delay_seconds)
-        rows.extend(
-            client.fetch_range(
-                symbol=symbol,
-                resolution=resolution,
-                range_from=start,
-                range_to=end,
-                as_of_utc=datetime.now(UTC),
+        try:
+            rows.extend(
+                client.fetch_range(
+                    symbol=symbol,
+                    resolution=resolution,
+                    range_from=start,
+                    range_to=end,
+                    as_of_utc=datetime.now(UTC),
+                )
             )
-        )
+        except Exception as exc:
+            raise RuntimeError(f"{symbol} {resolution} {start}..{end}: {exc}") from exc
     output.mkdir(parents=True, exist_ok=True)
     candles_path = output / "candles.jsonl"
     with candles_path.open("w", encoding="utf-8", newline="\n") as handle:
