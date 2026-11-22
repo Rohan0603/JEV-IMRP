@@ -129,9 +129,10 @@ class AttemptStore:
 
                 # Windows-only typing; each platform's branch is checked by mypy on that
                 # platform, so allow the ignore to be unused on the other one.
+                lock_mode_name = "LK_LOCK"
                 msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
                     lock_handle.fileno(),
-                    msvcrt.LK_LOCK,
+                    getattr(msvcrt, lock_mode_name),
                     1,  # type: ignore[attr-defined, unused-ignore]
                 )
             else:
@@ -145,9 +146,10 @@ class AttemptStore:
                 yield
             finally:
                 if os.name == "nt":
+                    unlock_mode_name = "LK_UNLCK"
                     msvcrt.locking(  # type: ignore[attr-defined, unused-ignore]
                         lock_handle.fileno(),
-                        msvcrt.LK_UNLCK,
+                        getattr(msvcrt, unlock_mode_name),
                         1,  # type: ignore[attr-defined, unused-ignore]
                     )
                 else:
