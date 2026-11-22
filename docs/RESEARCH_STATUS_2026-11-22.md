@@ -72,3 +72,6 @@ The repository verification completed on `main` after the changes recorded
 here: `uv run pytest -q` (498 passed), `uv run ruff check .`,
 `uv run ruff format --check .`, `uv run mypy src`,
 `uv run python -m compileall -q src scripts`, and `git diff --check` all pass.
+GitHub Actions also passed for commit `f010b80`: JEV-IMRP quality run
+`45003373423` (Python 3.12/3.13/3.14 tests, Ruff, mypy and pricing surface) and
+Agent Governance CI run `45003373450`.
