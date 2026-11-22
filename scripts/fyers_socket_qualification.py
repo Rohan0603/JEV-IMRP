@@ -74,9 +74,15 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
     finished = threading.Event()
     errors: list[str] = []
     connection = None
+    connected_once = False
 
     def on_connect() -> None:
+        nonlocal connected_once
         assert connection is not None
+        if connected_once:
+            recorder.begin_connection()
+        else:
+            connected_once = True
         connection.subscribe(symbols=symbols, data_type="SymbolUpdate")
         connection.subscribe(symbols=symbols, data_type="DepthUpdate")
 

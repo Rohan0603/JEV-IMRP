@@ -166,6 +166,21 @@ class FyersRecorder:
         self._sequence = 0
         self._seen_symbols: set[tuple[str, str]] = set()
 
+    def begin_connection(self, connection_id: str | None = None) -> int:
+        """Start a new socket generation after a connect or reconnect.
+
+        FYERS does not preserve subscriptions or quote state across a socket
+        reconnect. The next packet for each symbol must therefore be recorded
+        as a fresh snapshot, and the generation/connection identifiers must be
+        visible to data-health and replay checks.
+        """
+
+        self.generation = self.book.begin_generation()
+        self.writer.generation = self.generation
+        self.connection_id = connection_id or uuid.uuid4().hex
+        self._seen_symbols.clear()
+        return self.generation
+
     @staticmethod
     def _system_clock() -> tuple[datetime, int]:
         import time

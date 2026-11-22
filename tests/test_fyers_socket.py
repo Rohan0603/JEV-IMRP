@@ -110,6 +110,25 @@ def test_fyers_recorder_preserves_packet_provenance_and_rebuilds_state() -> None
     assert state is not None and state.last_price == 1422.5
 
 
+def test_fyers_recorder_reconnect_starts_new_generation_and_snapshot_sequence() -> None:
+    writer = FakeWriter()
+    now = datetime(2026, 1, 2, 10, 0, tzinfo=UTC)
+    recorder = FyersRecorder(writer, clock=lambda: (now, 10))
+
+    first, _ = recorder.feed(
+        {"type": "sf", "symbol": "NSE:RELIANCE-EQ", "ltp": 1422.5, "last_traded_time": 1}
+    )
+    recorder.begin_connection("reconnected")
+    second, _ = recorder.feed(
+        {"type": "sf", "symbol": "NSE:RELIANCE-EQ", "ltp": 1422.6, "last_traded_time": 2}
+    )
+
+    assert first.message_type == "tk"
+    assert second.message_type == "tk"
+    assert second.subscription_generation == first.subscription_generation + 1
+    assert second.connection_id == "reconnected"
+
+
 def test_fyers_socket_session_reconciles_symbols_across_reconnect() -> None:
     session = FyersSocketSession(max_symbols=2, max_reconnects=3)
 
