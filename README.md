@@ -88,6 +88,8 @@ is retained as immutable evidence in
 [`docs/OPENALGO_FYERS_QUALIFICATION.md`](docs/OPENALGO_FYERS_QUALIFICATION.md).
 The current project-wide checkpoint is recorded in
 [`docs/PROJECT_COMPLETION_AUDIT_2026-11-19.md`](docs/PROJECT_COMPLETION_AUDIT_2026-11-19.md).
+The current research-phase status is recorded in
+[`docs/RESEARCH_STATUS_2026-11-22.md`](docs/RESEARCH_STATUS_2026-11-22.md).
 
 The direct read-only smoke path is opt-in:
 
@@ -113,6 +115,16 @@ uv run python scripts/fyers_history_research.py `
 The command writes an ignored `data/research/fyers_history/` dataset and a
 SHA-256 manifest. It uses a conservative request delay and fails closed on an
 expired token or any non-research endpoint.
+
+The credentialed socket qualification command is also read-only and refuses to
+run outside NSE cash-market hours:
+
+```powershell
+uv run python scripts/fyers_socket_qualification.py --duration 300
+```
+
+It records raw `SymbolUpdate` and `DepthUpdate` packets through the canonical
+FYERS recorder, including receipt/source timing and reconnect metadata.
 
 ## Setup
 

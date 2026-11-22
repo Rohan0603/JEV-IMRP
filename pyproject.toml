@@ -19,6 +19,7 @@ dependencies = [
     "httpx==0.28.1",          # direct FYERS REST transport and TypeSafe API calls
     "pyyaml==6.0.3",          # configuration files
     "websockets==17.3",       # provider data-only WebSocket boundary
+    "fyers-apiv3==3.3.0",      # direct FYERS v3 read-only data socket
 ]
 
 [project.optional-dependencies]
