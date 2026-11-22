@@ -39,10 +39,11 @@ dataset when using it outside this workspace.
    evidence, and independent review remain external gates.
 5. The locked holdout is dated 2027, so the current November 2026 data cannot
    be presented as the locked confirmatory evaluation.
-6. The FYERS access token is currently expired. The one-minute history attempt
-   failed closed and wrote no partial artifact; refresh is user-mediated and
-   must not be bypassed. The research history command now supports an explicit
-   `--reauth` opt-in for that loopback flow.
+6. The previous FYERS access token was expired. The user-mediated `--reauth`
+   flow completed successfully and the current token is valid through
+   2026-11-23 00:30 UTC. The one-minute history attempt still failed closed and
+   wrote no partial artifact; refresh remains user-mediated and must not be
+   bypassed.
 7. After the explicit refresh, the one-minute request identified one malformed
    FYERS ADANIENT candle in the requested range (`open=2730.0` while
    `low=2736.6`). The normalizer rejected the complete symbol slice; the value
@@ -62,3 +63,10 @@ dataset when using it outside this workspace.
 
 All observations in this document are research-only. No live order is
 authorized, placed, modified, or cancelled.
+
+## Local verification at this checkpoint
+
+The repository verification completed on `main` after the changes recorded
+here: `uv run pytest -q` (498 passed), `uv run ruff check .`,
+`uv run ruff format --check .`, `uv run mypy src`,
+`uv run python -m compileall -q src scripts`, and `git diff --check` all pass.
