@@ -13,6 +13,7 @@ from jev_imrp.ingest.fyers_socket import (
     normalize_fyers_message,
     parse_fyers_message,
 )
+from jev_imrp.ingest.qualification import evaluate_qualification
 
 
 class FakeWriter:
@@ -167,6 +168,29 @@ def test_fyers_missing_source_time_and_touchline_fail_data_health_closed() -> No
     assert report.ok is False
     assert "missing_source_timestamp" in report.blocked_reasons
     assert "missing_touchline" in report.blocked_reasons
+
+
+def test_fyers_qualification_recognizes_depth_and_quote_provenance() -> None:
+    writer = FakeWriter()
+    recorder = FyersRecorder(
+        writer,
+        clock=lambda: (datetime(2026, 1, 2, 10, 0, tzinfo=UTC), 10),
+    )
+    recorder.feed(
+        {
+            "type": "dp",
+            "symbol": "NSE:RELIANCE-EQ",
+            "bid_price1": 1422.4,
+            "bid_size1": 10,
+            "ask_price1": 1422.6,
+            "ask_size1": 12,
+            "last_traded_time": 1_767_348_000,
+        }
+    )
+    report = evaluate_qualification(writer.events)
+
+    assert report.metrics["missing_depth_levels"] == 0
+    assert report.metrics["quote_events_without_explicit_touchline"] == 0
 
 
 @pytest.mark.parametrize("raw", ["not-json", "[]", '{"type":"unknown"}'])

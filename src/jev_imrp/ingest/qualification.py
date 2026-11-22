@@ -1,4 +1,4 @@
-"""Fail-closed qualification metrics for OpenAlgo-backed FYERS captures."""
+"""Fail-closed qualification metrics for provider-normalized market captures."""
 
 from __future__ import annotations
 
@@ -125,7 +125,8 @@ def evaluate_qualification(
         ask = _number(event.payload.get("sp1"))
         if bid is not None and ask is not None and bid >= ask:
             crossed += 1
-        if event.payload.get("_openalgo_type") == "depth" and (bid is None or ask is None):
+        provider_type = event.payload.get("_fyers_type", event.payload.get("_openalgo_type"))
+        if provider_type in {"dp", "depth"} and (bid is None or ask is None):
             missing_depth += 1
         if fill_eligible(event, as_of=end, max_stale_ms=limits.max_stale_gap_ms):
             eligible += 1
@@ -152,7 +153,12 @@ def evaluate_qualification(
         "quote_events_without_explicit_touchline": sum(
             1
             for event in event_list
-            if event.payload.get("_openalgo_type") == "quote"
+            if event.payload.get("_fyers_type", event.payload.get("_openalgo_type"))
+            in {
+                "sf",
+                "if",
+                "quote",
+            }
             and (event.payload.get("bp1") is None or event.payload.get("sp1") is None)
         ),
     }
