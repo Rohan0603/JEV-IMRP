@@ -20,6 +20,7 @@ import yaml
 
 from jev_imrp.common.timeutils import is_within_session, to_ist, utc_now
 from jev_imrp.ingest.file_writer import RawEventWriter
+from jev_imrp.ingest.fyers_market_data import FyersMarketDataBridge
 from jev_imrp.ingest.fyers_socket import FyersRecorder
 from jev_imrp.ingest.fyers_symbol_master import to_fyers_symbol
 
@@ -70,7 +71,10 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
         provider_version=f"fyers-apiv3-{SDK_VERSION}",
         raw_timestamp_semantics="last_traded_time_epoch_seconds_when_present",
     )
-    recorder = FyersRecorder(writer, session_id=session_id, data_origin="live")
+    bridge = FyersMarketDataBridge(
+        writer,
+        recorder=FyersRecorder(writer, session_id=session_id, data_origin="live"),
+    )
     finished = threading.Event()
     errors: list[str] = []
     connection = None
@@ -80,7 +84,7 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
         nonlocal connected_once
         assert connection is not None
         if connected_once:
-            recorder.begin_connection()
+            bridge.recorder.begin_connection()
         else:
             connected_once = True
         connection.subscribe(symbols=symbols, data_type="SymbolUpdate")
@@ -88,7 +92,7 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
 
     def on_message(message: Any) -> None:
         try:
-            recorder.feed(message)
+            bridge.feed(message)
         except (TypeError, ValueError) as exc:
             errors.append(str(exc))
 
@@ -131,9 +135,10 @@ def capture(*, duration_seconds: float, output: Path, reconnect_retries: int) ->
         "duration_seconds": duration_seconds,
         "symbols": symbols,
         "counters": {
-            "received": recorder.counters.received,
-            "written": recorder.counters.written,
-            "by_message_type": dict(recorder.counters.by_message_type),
+            "received": bridge.recorder.counters.received,
+            "written": bridge.recorder.counters.written,
+            "by_message_type": dict(bridge.recorder.counters.by_message_type),
+            "validated_quote_rows": bridge.quote_rows,
         },
         "socket_errors": errors,
         "live_orders": {

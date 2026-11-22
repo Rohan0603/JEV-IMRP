@@ -19,6 +19,7 @@ from jev_imrp.ingest.fyers_history import (
     drop_incomplete_candles,
     normalize_candles,
 )
+from jev_imrp.ingest.fyers_market_data import FyersMarketDataBridge
 from jev_imrp.ingest.fyers_oauth import (
     FyersAuthClient,
     FyersAuthError,
@@ -80,6 +81,7 @@ __all__ = [
     "FyersHistoryClient",
     "FyersHistoryError",
     "FyersInstrument",
+    "FyersMarketDataBridge",
     "FyersOAuthState",
     "FyersPacketError",
     "FyersQuoteClient",
