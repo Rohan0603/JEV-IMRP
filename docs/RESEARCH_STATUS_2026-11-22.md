@@ -12,6 +12,7 @@ result.
 | Frozen universe | 20 exact NSE cash-equity symbols from `config/universe.yaml` | Verified |
 | Daily history | 440 validated OHLCV rows, 2026-10-17 through 2026-11-18 | Exploratory |
 | Five-minute history | 31,780 validated OHLCV rows; 1,589 per symbol | Exploratory |
+| Close-to-close diagnostic | 29,140 same-session 30-minute candle-return observations across 20 symbols | Exploratory only |
 | Dataset integrity | Zero duplicate symbol/timestamp pairs and zero invalid OHLCV rows | Verified |
 | Provenance | Ignored manifests record endpoint, range, symbol list, retrieval time and SHA-256 | Verified |
 | Order safety | Research mode and direct scripts expose no order/position/modify/cancel call | Verified |
@@ -38,6 +39,9 @@ dataset when using it outside this workspace.
    evidence, and independent review remain external gates.
 5. The locked holdout is dated 2027, so the current November 2026 data cannot
    be presented as the locked confirmatory evaluation.
+6. The FYERS access token is currently expired. The one-minute history attempt
+   failed closed and wrote no partial artifact; refresh is user-mediated and
+   must not be bypassed.
 
 ## Safe next sequence
 
