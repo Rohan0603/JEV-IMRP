@@ -112,6 +112,9 @@ uv run python scripts/fyers_history_research.py `
   --from 2026-10-17 --to 2026-11-18 --resolution 1D
 ```
 
+If the token is expired, add `--reauth` to opt into one user-mediated
+loopback OAuth refresh before the read-only request is retried.
+
 The command writes an ignored `data/research/fyers_history/` dataset and a
 SHA-256 manifest. It uses a conservative request delay and fails closed on an
 expired token or any non-research endpoint.

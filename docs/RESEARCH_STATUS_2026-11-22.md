@@ -41,7 +41,8 @@ dataset when using it outside this workspace.
    be presented as the locked confirmatory evaluation.
 6. The FYERS access token is currently expired. The one-minute history attempt
    failed closed and wrote no partial artifact; refresh is user-mediated and
-   must not be bypassed.
+   must not be bypassed. The research history command now supports an explicit
+   `--reauth` opt-in for that loopback flow.
 
 ## Safe next sequence
 
